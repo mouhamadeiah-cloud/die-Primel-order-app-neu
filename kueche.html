@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Küche - Die Primel</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        :root {
+            --primary-green: #2d6a4f;
+            --primary-gold: #d4a373;
+            --light-bg: #fefae0;
+            --danger: #c1121f;
+            --success: #2b9348;
+            --text-red: #c1121f;
+            --text-blue: #1e6091;
+        }
+        .app-header {
+            background: var(--primary-green);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .hamburger {
+            font-size: 28px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .app-title {
+            font-size: 1.6rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            flex-grow: 1;
+            cursor: pointer;
+        }
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 260px;
+            height: 100%;
+            background: white;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.2);
+            z-index: 200;
+            transition: 0.3s;
+            padding-top: 70px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-left: 20px;
+        }
+        .side-menu a {
+            font-size: 1.3rem;
+            text-decoration: none;
+            color: var(--primary-green);
+            padding: 8px;
+            font-weight: bold;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 150;
+            display: none;
+        }
+        .kitchen-container {
+            flex: 1;
+            padding: 20px;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+        }
+        .toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 20px;
+        }
+        .tables-dropdown-btn {
+            background: var(--primary-green);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dropdown-menu {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            border-radius: 16px;
+            z-index: 1;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .dropdown-content a {
+            color: var(--primary-green);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .dropdown-content a:hover {
+            background-color: #f1f1f1;
+        }
+        .show {
+            display: block;
+        }
+        .orders-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 24px;
+            width: 100%;
+        }
+        .order-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .order-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        .card-header {
+            background: var(--primary-green);
+            color: white;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .order-number {
+            font-size: 1.1rem;
+            font-weight: bold;
+            background: rgba(255,255,255,0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .table-number {
+            font-size: 1.1rem;
+            font-weight: bold;
+            background: var(--primary-gold);
+            color: #2d2d2d;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+        .order-time {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        .card-body {
+            padding: 16px;
+            flex: 1;
+        }
+        .order-items {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .order-item {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .item-name {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .item-custom-text {
+            color: var(--text-red);
+            font-size: 0.85rem;
+            margin-top: 4px;
+            padding-left: 8px;
+            border-left: 3px solid var(--text-red);
+        }
+        .item-extras, .item-zutaten {
+            font-size: 0.8rem;
+            margin-top: 4px;
+            padding-left: 8px;
+        }
+        .item-extras span, .item-zutaten span {
+            display: inline-block;
+            background: #e0f2fe;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-right: 6px;
+            margin-bottom: 4px;
+            color: var(--text-blue);
+        }
+        .card-footer {
+            padding: 12px 16px;
+            border-top: 1px solid #eee;
+            background: #fafafa;
+        }
+        .complete-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .complete-btn:hover {
+            background: #a00d1a;
+        }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            display: none;
+        }
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border-radius: 32px;
+            padding: 24px;
+            position: relative;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary-gold);
+        }
+        .modal-header h3 {
+            font-size: 1.5rem;
+            color: var(--primary-green);
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #666;
+        }
+        .modal-complete-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            font-size: 1rem;
+        }
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 40px;
+            z-index: 400;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            font-size: 1.2rem;
+            grid-column: 1 / -1;
+        }
+        #orderSound {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .orders-grid {
+                grid-template-columns: 1fr;
+            }
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .kitchen-container {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-header">
+    <button class="hamburger" id="hamburgerBtn">☰</button>
+    <div class="app-title" id="appTitle">Die Primel</div>
+    <div style="width:40px;"></div>
+</div>
+<div class="overlay" id="overlay"></div>
+<div class="side-menu" id="sideMenu">
+    <a href="index.html">🏠 Startseite</a>
+    <a href="kueche.html" class="active">🍳 Küche</a>
+    <a href="admin.html">🔧 Admin</a>
+    <a href="kunden_display.html">📺 Kunden Display</a>
+    <a href="online.html">🌐 Online</a>
+</div>
+
+<div class="kitchen-container">
+    <div class="toolbar">
+        <div class="dropdown-menu">
+            <button class="tables-dropdown-btn" id="tablesDropdownBtn">🪑 Tische ▼</button>
+            <div id="tablesDropdownContent" class="dropdown-content"></div>
+        </div>
+    </div>
+    <div id="ordersGrid" class="orders-grid">
+        <div class="empty-state">Keine aktiven Bestellungen</div>
+    </div>
+</div>
+
+<div id="orderModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Bestellung</h3>
+            <button class="close-modal" id="closeModalBtn">&times;</button>
+        </div>
+        <div id="modalBody"></div>
+        <button id="modalCompleteBtn" class="modal-complete-btn">✅ Bestellung abschließen</button>
+    </div>
+</div>
+
+<audio id="orderSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" preload="auto"></audio>
+<div id="toastMsg" class="toast"></div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, get, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyAEupmyQlU5MK_tRDIlJpjwryKU0nHpjQk",
+        authDomain: "die-primel-orderapp.firebaseapp.com",
+        databaseURL: "https://die-primel-orderapp-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "die-primel-orderapp",
+        storageBucket: "die-primel-orderapp.firebasestorage.app",
+        messagingSenderId: "781155000962",
+        appId: "1:781155000962:web:93f9a6aa03d4e77d358a9b"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    let orders = [];
+    let previousOrderCount = 0;
+    let currentModalOrderId = null;
+    
+    function showToast(msg, isErr = false) {
+        const toast = document.getElementById("toastMsg");
+        toast.textContent = msg;
+        toast.style.background = isErr ? "#c1121f" : "#2d6a4f";
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2500);
+    }
+        function playSound() {
+        // إنشاء عنصر صوت جديد في كل مرة (يتجاوز بعض قيود Autoplay)
+        const audio = new Audio("https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
+        audio.volume = 0.8;
+        audio.play().catch(e => {
+            console.log("Sound play failed:", e);
+            // إذا فشل، نحاول مرة ثانية بعد 100ms
+            setTimeout(() => {
+                const audio2 = new Audio("https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
+                audio2.play().catch(err => console.log("Second attempt failed:", err));
+            }, 100);
+        });
+    }
+    
+    function formatTime(timestamp) {
+        if (!timestamp) return "--:--";
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    function renderOrderItems(items) {
+        if (!items || !items.length) return "<p>Keine Artikel</p>";
+        return items.map(item => {
+            let extrasHtml = "";
+            let zutatenHtml = "";
+            if (item.extras && item.extras.length) {
+                extrasHtml = `<div class="item-extras">${item.extras.map(ex => `<span>➕ ${escapeHtml(ex.name)} +${ex.price}€</span>`).join('')}</div>`;
+            }
+            if (item.zutaten && item.zutaten.length) {
+                zutatenHtml = `<div class="item-zutaten">${item.zutaten.map(z => `<span>🧂 ${escapeHtml(z.name)} +${z.price}€</span>`).join('')}</div>`;
+            }
+            let customHtml = "";
+            if (item.customText) {
+                customHtml = `<div class="item-custom-text">📝 ${escapeHtml(item.customText)}</div>`;
+            }
+            let priceModifierHtml = "";
+            if (item.priceModifier && item.priceModifier !== 0) {
+                const modifierText = item.priceModifier > 0 ? `Preiserhöhung +${item.priceModifier.toFixed(2)}€` : `Preisrabatt ${item.priceModifier.toFixed(2)}€`;
+                priceModifierHtml = `<div style="font-size:0.8rem; color:var(--primary-gold);">💰 ${modifierText}</div>`;
+            }
+            return `
+                <div class="order-item">
+                    <div class="item-name">${escapeHtml(item.name)}</div>
+                    ${priceModifierHtml}
+                    ${customHtml}
+                    ${extrasHtml}
+                    ${zutatenHtml}
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function escapeHtml(str) { 
+        if (!str) return "";
+        return String(str).replace(/[&<>]/g, function(m){
+            if(m==='&') return '&amp;';
+            if(m==='<') return '&lt;';
+            if(m==='>') return '&gt;';
+            return m;
+        });
+    }
+    
+    function renderOrders() {
+        const container = document.getElementById("ordersGrid");
+        if (!orders.length) {
+            container.innerHTML = `<div class="empty-state">🍽️ Keine aktiven Bestellungen</div>`;
+            return;
+        }
+        container.innerHTML = orders.map(order => `
+            <div class="order-card" data-order-id="${order.id}">
+                <div class="card-header">
+                    <span class="order-number">📋 #${order.orderNumber || order.id.slice(-6)}</span>
+                    <span class="table-number">🪑 Tisch ${order.table}</span>
+                    <span class="order-time">🕒 ${formatTime(order.timestamp)}</span>
+                </div>
+                <div class="card-body">
+                    <div class="order-items">
+                        ${renderOrderItems(order.items)}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="complete-btn" data-id="${order.id}">✅ Fertigstellen</button>
+                </div>
+            </div>
+        `).join('');
+        
+        document.querySelectorAll(".complete-btn").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                const orderId = btn.dataset.id;
+                await completeOrder(orderId);
+            });
+        });
+        
+        document.querySelectorAll(".order-card").forEach(card => {
+            card.addEventListener("click", (e) => {
+                if (e.target.classList.contains('complete-btn')) return;
+                const orderId = card.dataset.orderId;
+                openOrderModal(orderId);
+            });
+        });
+    }
+    
+    async function completeOrder(orderId) {
+        try {
+            await update(ref(db, `orders/${orderId}`), { visibleInKitchen: false });
+            showToast("Bestellung abgeschlossen (aus der Küche ausgeblendet)");
+        } catch (error) {
+            showToast("Fehler beim Abschließen", true);
+        }
+    }
+    
+    function openOrderModal(orderId) {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
+        currentModalOrderId = orderId;
+        document.getElementById("modalTitle").innerHTML = `Bestellung #${order.orderNumber || orderId.slice(-6)} - Tisch ${order.table}`;
+        document.getElementById("modalBody").innerHTML = `
+            <div style="margin-bottom: 16px; padding: 8px; background:#f0f2f5; border-radius: 20px; text-align:center;">
+                🕒 Bestellt um: ${formatTime(order.timestamp)}
+            </div>
+            <div class="order-items">
+                ${renderOrderItems(order.items)}
+            </div>
+        `;
+        document.getElementById("orderModal").style.display = "flex";
+    }
+    
+    async function loadOccupiedTables() {
+        const snapshot = await get(ref(db, 'orders'));
+        const data = snapshot.val();
+        const activeTables = new Set();
+        if (data) {
+            Object.values(data).forEach(order => {
+                let t = order.table;
+                if (t !== "takeaway" && !isNaN(parseInt(t)) && order.status !== "completed" && order.visibleInKitchen !== false) {
+                    activeTables.add(parseInt(t));
+                }
+            });
+        }
+        return Array.from(activeTables).sort((a,b)=>a-b);
+    }
+    
+    async function renderTablesDropdown() {
+        const activeTables = await loadOccupiedTables();
+        const container = document.getElementById("tablesDropdownContent");
+        if (activeTables.length === 0) {
+            container.innerHTML = `<a>Keine belegten Tische</a>`;
+        } else {
+            container.innerHTML = activeTables.map(t => `<a data-table="${t}">Tisch ${t}</a>`).join('');
+            container.querySelectorAll("a[data-table]").forEach(link => {
+                link.addEventListener("click", () => {
+                    const tableNum = parseInt(link.dataset.table);
+                    window.location.href = `index.html?table=${tableNum}`;
+                });
+            });
+        }
+    }
+    
+    // ========== الاستماع للطلبات مع الجرس ==========
+    const ordersRef = ref(db, 'orders');
+    onValue(ordersRef, (snapshot) => {
+        const data = snapshot.val();
+        const newOrders = [];
+        
+        if (data) {
+            Object.entries(data).forEach(([id, order]) => {
+                if (order.status !== "completed" && order.visibleInKitchen !== false) {
+                    newOrders.push({ id, ...order });
+                }
+            });
+        }
+        
+        newOrders.sort((a,b) => b.timestamp - a.timestamp);
+        
+        // 🔔 الجرس: إذا زاد عدد الطلبات عن السابق
+        if (newOrders.length > previousOrderCount && newOrders.length > 0) {
+            playSound();
+            showToast("🔔 Neue Bestellung eingegangen!");
+        }
+        
+        previousOrderCount = newOrders.length;
+        orders = newOrders;
+        renderOrders();
+        renderTablesDropdown();
+    });
+    
+    // ========== إعداد العداد التلقائي لليوم ==========
+    setInterval(async () => {
+        const today = new Date().toISOString().slice(0,10);
+        const counterRef = ref(db, `counters/lastDate`);
+        const snapshot = await get(counterRef);
+        const lastDate = snapshot.val();
+        if (lastDate !== today) {
+            await update(ref(db, 'counters'), { lastDate: today });
+            await set(ref(db, `counters/orders/${today}`), 99);
+        }
+    }, 60000);
+    
+    // ========== إغلاق النافذة المكبرة ==========
+    document.getElementById("closeModalBtn").onclick = () => {
+        document.getElementById("orderModal").style.display = "none";
+        currentModalOrderId = null;
+    };
+    document.getElementById("modalCompleteBtn").onclick = async () => {
+        if (currentModalOrderId) {
+            await completeOrder(currentModalOrderId);
+            document.getElementById("orderModal").style.display = "none";
+            currentModalOrderId = null;
+        }
+    };
+    const modal = document.getElementById("orderModal");
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) {
+            modal.style.display = "none";
+            currentModalOrderId = null;
+        }
+    });
+    
+    // ========== زر الطاولات المنسدل ==========
+    document.getElementById("tablesDropdownBtn").onclick = (e) => {
+        e.stopPropagation();
+        const dropdown = document.getElementById("tablesDropdownContent");
+        dropdown.classList.toggle("show");
+    };
+    window.onclick = (event) => {
+        if (!event.target.matches('#tablesDropdownBtn')) {
+            const dropdown = document.getElementById("tablesDropdownContent");
+            if (dropdown.classList.contains('show')) {
+                dropdown.classList.remove('show');
+            }
+        }
+    };
+    
+    // ========== القائمة الجانبية ==========
+    document.getElementById("hamburgerBtn").onclick = () => {
+        document.getElementById("sideMenu").style.left = "0";
+        document.getElementById("overlay").style.display = "block";
+    };
+    document.getElementById("overlay").onclick = () => {
+        document.getElementById("sideMenu").style.left = "-280px";
+        document.getElementById("overlay").style.display = "none";
+    };
+    document.getElementById("appTitle").onclick = () => {
+        window.location.href = "index.html";
+    };
+    
+    // تهيئة العداد لليوم الحالي
+    (async function initCounter() {
+        const today = new Date().toISOString().slice(0,10);
+        const counterRef = ref(db, `counters/orders/${today}`);
+        const snapshot = await get(counterRef);
+        if (!snapshot.exists()) {
+            await set(counterRef, 99);
+        }
+        const lastDateRef = ref(db, `counters/lastDate`);
+        const lastDateSnap = await get(lastDateRef);
+        if (lastDateSnap.val() !== today) {
+            await set(lastDateRef, today);
+        }
+    })();
+</script>
+</body>
+</html>

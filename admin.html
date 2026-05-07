@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Admin - Die Primel</title>
+    <style>
+        /* نفس الأنماط السابقة مع إضافة تعديل بسيط لعرض الصور */
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding-top: 70px; }
+        .app-header { background: #2d6a4f; color: white; padding: 12px 16px; display: flex; align-items: center; gap: 12px; position: fixed; top:0; left:0; width:100%; z-index:1000; }
+        .hamburger { font-size:28px; cursor:pointer; background:none; border:none; color:white; width:40px; }
+        .app-title { font-size:1.6rem; font-weight:bold; flex-grow:1; cursor:pointer; }
+        .close-btn { background:none; border:none; font-size:24px; color:white; cursor:pointer; width:40px; }
+        .side-menu { position:fixed; top:0; left:-280px; width:260px; height:100%; background:white; transition:0.3s; padding-top:70px; padding-left:20px; z-index:1100; }
+        .side-menu a { font-size:1.3rem; text-decoration:none; color:#2d6a4f; padding:8px; font-weight:bold; display:block; }
+        .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:1050; display:none; }
+        .login-box { max-width:300px; margin:80px auto; background:white; padding:30px; border-radius:32px; text-align:center; }
+        .login-box input { width:100%; padding:12px; margin:12px 0; font-size:1.2rem; border:2px solid #d4a373; border-radius:40px; }
+        .login-box button { background:#2d6a4f; color:white; border:none; padding:12px 24px; border-radius:40px; cursor:pointer; }
+        .admin-content { display:none; max-width:1200px; margin:20px auto; padding:16px; }
+        .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; background:white; padding:12px; border-radius:48px; justify-content:center; }
+        .tab-btn { background:#e9ecef; border:none; padding:10px 20px; border-radius:40px; font-weight:bold; cursor:pointer; }
+        .tab-btn.active { background:#2d6a4f; color:white; }
+        .panel { background:white; border-radius:32px; padding:20px; display:none; }
+        .panel.active-panel { display:block; }
+        .add-btn { background:#2d6a4f; color:white; border:none; padding:12px 24px; border-radius:40px; margin-bottom:20px; cursor:pointer; }
+        .filter-select { margin-bottom:20px; padding:8px; width:200px; border-radius:40px; border:1px solid #ccc; }
+        .item-list { display:flex; flex-direction:column; gap:12px; }
+        .list-item { background:#f8f9fa; border-radius:24px; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+        .list-item-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .list-item-actions button { margin-left:8px; background:none; border:none; font-size:1.2rem; cursor:pointer; }
+        .edit-btn { color:#d4a373; }
+        .delete-btn { color:#c1121f; }
+        .up-btn, .down-btn { color:#2d6a4f; font-weight:bold; }
+        .preview-img-small { width:40px; height:40px; object-fit:cover; border-radius:12px; }
+        .modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; z-index:1200; display:none; }
+        .modal-card { background:white; width:90%; max-width:500px; border-radius:32px; padding:24px; }
+        .modal-card input, .modal-card select { width:100%; margin:8px 0; padding:10px; border-radius:20px; border:1px solid #ccc; }
+        .modal-card button { background:#2d6a4f; color:white; border:none; padding:8px 16px; border-radius:40px; cursor:pointer; margin-top:8px; margin-right:8px; }
+        .preview-img { max-width:100px; margin:5px; border-radius:12px; }
+        .error-msg { color:red; margin-top:10px; }
+        .toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:#333; color:white; padding:12px 24px; border-radius:40px; z-index:1300; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+        .toast.show { opacity:1; }
+    </style>
+</head>
+<body>
+<div class="app-header">
+    <button class="hamburger" id="hamburgerBtn">☰</button>
+    <div class="app-title" id="appTitle">Die Primel</div>
+    <button class="close-btn" id="closeBtn">✖</button>
+</div>
+<div class="overlay" id="overlay"></div>
+<div class="side-menu" id="sideMenu">
+    <a href="index.html">🏠 Startseite</a>
+    <a href="kueche.html">🍳 Küche</a>
+    <a href="admin.html" class="active">🔧 Admin</a>
+    <a href="kunden_display.html">📺 Kunden Display</a>
+    <a href="online.html">🌐 Online</a>
+</div>
+
+<div id="loginDiv" class="login-box">
+    <h2>Admin Login</h2>
+    <input type="password" id="pinInput" placeholder="PIN" maxlength="4" autocomplete="off">
+    <button id="loginBtn">Enter</button>
+    <div id="loginError" class="error-msg"></div>
+</div>
+
+<div id="adminContent" class="admin-content">
+    <div class="tabs">
+        <button class="tab-btn" data-tab="gruppen">📁 Gruppen</button>
+        <button class="tab-btn" data-tab="produkte">🍕 Produkte</button>
+        <button class="tab-btn" data-tab="zutaten">🧂 Zutaten</button>
+        <button class="tab-btn" data-tab="extras">➕ Extras</button>
+        <button class="tab-btn" data-tab="pin">🔐 Pin</button>
+    </div>
+    <div id="gruppenPanel" class="panel"><button class="add-btn" id="addGroupBtn">+ Neue Gruppe</button><div id="groupsList" class="item-list"></div></div>
+    <div id="produktePanel" class="panel"><select id="productGroupFilter" class="filter-select"></select><button class="add-btn" id="addProductBtn">+ Neues Produkt</button><div id="productsList" class="item-list"></div></div>
+    <div id="zutatenPanel" class="panel"><button class="add-btn" id="addZutatBtn">+ Neue Zutat</button><div id="zutatenList" class="item-list"></div></div>
+    <div id="extrasPanel" class="panel"><button class="add-btn" id="addExtraBtn">+ Neue Extra</button><div id="extrasList" class="item-list"></div></div>
+    <div id="pinPanel" class="panel"><h3>PIN ändern</h3><input type="password" id="newPin1" placeholder="Neuer PIN (4 Ziffern)"><input type="password" id="newPin2" placeholder="Wiederholen"><button id="changePinBtn">Speichern</button><p id="pinMessage"></p><hr><button id="logoutBtn">Abmelden</button></div>
+</div>
+
+<div id="genericModal" class="modal"><div class="modal-card"><h3 id="modalTitle"></h3><div id="modalBody"></div><button id="modalSaveBtn">Speichern</button><button id="modalCancelBtn" class="cancel-btn">Abbrechen</button></div></div>
+<div id="toastMsg" class="toast">Nachricht</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, get, update, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    
+    const firebaseConfig = {
+        apiKey: "AIzaSyAEupmyQlU5MK_tRDIlJpjwryKU0nHpjQk",
+        authDomain: "die-primel-orderapp.firebaseapp.com",
+        databaseURL: "https://die-primel-orderapp-default-rtdb.europe-west1.firebasedatabase.app",
+        projectId: "die-primel-orderapp",
+        storageBucket: "die-primel-orderapp.firebasestorage.app",
+        messagingSenderId: "781155000962",
+        appId: "1:781155000962:web:93f9a6aa03d4e77d358a9b",
+        measurementId: "G-Y9LWP10QJQ"
+    };
+    const IMGBB_API_KEY = "d845bf9621176f596c84145d45b5b918";
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    
+    let currentAdminPin = null;
+    let allGroups = [], allProducts = [], allZutaten = [], allExtras = [];
+    let currentProductFilter = "all";
+    
+    // ---- مساعدات عامة ----
+    function showToast(msg, isErr = false) {
+        const toast = document.getElementById("toastMsg");
+        toast.textContent = msg;
+        toast.style.background = isErr ? "#c1121f" : "#2d6a4f";
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2500);
+    }
+    function showConfirm(msg, onConfirm) {
+        const modalDiv = document.createElement("div");
+        modalDiv.className = "modal";
+        modalDiv.style.display = "flex";
+        modalDiv.innerHTML = `<div class="modal-card"><h3>Bestätigung</h3><p style="margin:16px 0;">${msg}</p><button id="confirmYesBtn">Ja</button><button id="confirmNoBtn" class="cancel-btn">Nein</button></div>`;
+        document.body.appendChild(modalDiv);
+        document.getElementById("confirmYesBtn").onclick = () => { modalDiv.remove(); onConfirm(true); };
+        document.getElementById("confirmNoBtn").onclick = () => { modalDiv.remove(); onConfirm(false); };
+    }
+    async function uploadImageToImgBB(file) {
+        if (!file) return "";
+        const fd = new FormData();
+        fd.append("image", file);
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: "POST", body: fd });
+        const data = await res.json();
+        if (data.success) return data.data.url;
+        throw new Error("Upload fehlgeschlagen");
+    }
+    function getImagePreview(url, size = "small") {
+        if (!url) return "";
+        const cls = size === "small" ? "preview-img-small" : "preview-img";
+        return `<img src="${url}" class="${cls}" onerror="this.src='https://via.placeholder.com/40?text=Fehler'">`;
+    }
+    
+    // ---- تحميل البيانات الأولية والدخول ----
+    async function initializeDefaultData() {
+        const pinRef = ref(db, 'settings/adminPin');
+        if (!(await get(pinRef)).exists()) await set(pinRef, "1234");
+        const groupsRef = ref(db, 'groups');
+        if (!(await get(groupsRef)).exists()) {
+            const defaults = [{ name: "Pizza", order: 0 }, { name: "Pasta", order: 1 }, { name: "Salate", order: 2 }];
+            for (let g of defaults) { const newId = push(groupsRef).key; await set(ref(db, `groups/${newId}`), g); }
+        }
+    }
+    async function loadPin() {
+        const snap = await get(ref(db, 'settings/adminPin'));
+        currentAdminPin = snap.exists() ? snap.val() : "1234";
+    }
+    document.getElementById("loginBtn").onclick = async () => {
+        const btn = document.getElementById("loginBtn");
+        btn.disabled = true;
+        btn.innerText = "⏳...";
+        try {
+            await initializeDefaultData();
+            await loadPin();
+            if (document.getElementById("pinInput").value === currentAdminPin) {
+                document.getElementById("loginDiv").style.display = "none";
+                document.getElementById("adminContent").style.display = "block";
+                await loadAllData();
+                showTab("gruppen");
+            } else showToast("Falscher PIN", true);
+        } catch(e) { showToast("Fehler: " + e.message, true); }
+        finally { btn.disabled = false; btn.innerText = "Enter"; }
+    };
+    
+    async function loadAllData() {
+        const groupsSnap = await get(ref(db, 'groups'));
+        allGroups = groupsSnap.exists() ? Object.entries(groupsSnap.val()).map(([id,val]) => ({ id, ...val })).sort((a,b)=> (a.order||0)-(b.order||0)) : [];
+        const productsSnap = await get(ref(db, 'products'));
+        allProducts = productsSnap.exists() ? Object.entries(productsSnap.val()).map(([id,val]) => ({ id, ...val })) : [];
+        const zutatenSnap = await get(ref(db, 'zutaten'));
+        allZutaten = zutatenSnap.exists() ? Object.entries(zutatenSnap.val()).map(([id,val]) => ({ id, ...val })) : [];
+        const extrasSnap = await get(ref(db, 'extras'));
+        allExtras = extrasSnap.exists() ? Object.entries(extrasSnap.val()).map(([id,val]) => ({ id, ...val })) : [];
+        renderGroups();
+        renderProductFilter();
+        renderProducts();
+        renderZutaten();
+        renderExtras();
+    }
+    
+    // ========== المجموعات (مع أسهم سريعة) ==========
+    function renderGroups() {
+        const container = document.getElementById("groupsList");
+        container.innerHTML = allGroups.map((g, idx) => `
+            <div class="list-item" data-id="${g.id}">
+                <div class="list-item-left">
+                    ${getImagePreview(g.imageUrl, "small")}
+                    <strong>${g.name}</strong>
+                </div>
+                <div class="list-item-actions">
+                    <button class="up-btn" data-idx="${idx}" ${idx===0 ? 'disabled' : ''}>▲</button>
+                    <button class="down-btn" data-idx="${idx}" ${idx===allGroups.length-1 ? 'disabled' : ''}>▼</button>
+                    <button class="edit-btn" data-id="${g.id}">✏️</button>
+                    <button class="delete-btn" data-id="${g.id}">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+        attachGroupEvents();
+    }
+    function attachGroupEvents() {
+        document.querySelectorAll("#groupsList .up-btn").forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                let idx = parseInt(btn.dataset.idx);
+                if (idx <= 0) return;
+                [allGroups[idx-1], allGroups[idx]] = [allGroups[idx], allGroups[idx-1]];
+                const updates = {};
+                updates[`groups/${allGroups[idx-1].id}/order`] = idx-1;
+                updates[`groups/${allGroups[idx].id}/order`] = idx;
+                await update(ref(db), updates).catch(e=>showToast("Fehler beim Speichern",true));
+                renderGroups();
+                showToast("Reihenfolge aktualisiert");
+            };
+        });
+        document.querySelectorAll("#groupsList .down-btn").forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                let idx = parseInt(btn.dataset.idx);
+                if (idx >= allGroups.length-1) return;
+                [allGroups[idx+1], allGroups[idx]] = [allGroups[idx], allGroups[idx+1]];
+                const updates = {};
+                updates[`groups/${allGroups[idx+1].id}/order`] = idx+1;
+                updates[`groups/${allGroups[idx].id}/order`] = idx;
+                await update(ref(db), updates).catch(e=>showToast("Fehler beim Speichern",true));
+                renderGroups();
+                showToast("Reihenfolge aktualisiert");
+            };
+        });
+        document.querySelectorAll("#groupsList .edit-btn").forEach(btn => btn.onclick = (e) => { e.stopPropagation(); openGroupModal(btn.dataset.id); });
+        document.querySelectorAll("#groupsList .delete-btn").forEach(btn => btn.onclick = (e) => { e.stopPropagation(); showConfirm("Gruppe löschen?", async (ok) => { if(ok) { await remove(ref(db, `groups/${btn.dataset.id}`)); await loadAllData(); showToast("Gruppe gelöscht"); } }); });
+    }
+    function openGroupModal(id=null) {
+        const isEdit = !!id;
+        const group = isEdit ? allGroups.find(g => g.id == id) : null;
+        document.getElementById("modalTitle").innerText = isEdit ? "Gruppe bearbeiten" : "Neue Gruppe";
+        document.getElementById("modalBody").innerHTML = `
+            <input id="groupName" placeholder="Name" value="${group?.name||''}">
+            <input type="file" id="groupImage" accept="image/*">
+            ${getImagePreview(group?.imageUrl, "large")}
+            <div id="uploadStatus"></div>
+        `;
+        const modal = document.getElementById("genericModal");
+        modal.style.display = "flex";
+        document.getElementById("modalSaveBtn").onclick = async () => {
+            const name = document.getElementById("groupName").value;
+            const file = document.getElementById("groupImage").files[0];
+            let imageUrl = group?.imageUrl || "";
+            if(file) {
+                const statusDiv = document.getElementById("uploadStatus");
+                statusDiv.innerHTML = "⏳ Hochladen...";
+                try { imageUrl = await uploadImageToImgBB(file); statusDiv.innerHTML = "✅ Fertig"; } catch(err) { showToast("Upload fehlgeschlagen", true); return; }
+            }
+            if(isEdit) await update(ref(db, `groups/${id}`), { name, imageUrl });
+            else { const newId = push(ref(db, 'groups')).key; await set(ref(db, `groups/${newId}`), { name, imageUrl, order: allGroups.length }); }
+            modal.style.display = "none";
+            await loadAllData();
+            showToast(isEdit ? "Gruppe aktualisiert" : "Gruppe hinzugefügt");
+        };
+        document.getElementById("modalCancelBtn").onclick = () => modal.style.display = "none";
+    }
+    
+    // ========== المنتجات (مع فلتر محفوظ وأسهم سريعة) ==========
+    function renderProductFilter() {
+        const select = document.getElementById("productGroupFilter");
+        select.innerHTML = `<option value="all">Alle Gruppen</option>` + allGroups.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+        select.value = currentProductFilter;
+        select.onchange = (e) => {
+            currentProductFilter = e.target.value;
+            renderProducts();
+        };
+    }
+    function getFilteredProducts() {
+        if (currentProductFilter === "all") return [...allProducts];
+        return allProducts.filter(p => p.groupId === currentProductFilter);
+    }
+    function renderProducts() {
+        let filtered = getFilteredProducts();
+        filtered.sort((a,b) => (a.order||0) - (b.order||0));
+        const container = document.getElementById("productsList");
+        container.innerHTML = filtered.map((p, idx) => `
+            <div class="list-item" data-id="${p.id}">
+                <div class="list-item-left">
+                    ${getImagePreview(p.imageUrl, "small")}
+                    <div><strong>${p.name}</strong> (${allGroups.find(g=>g.id===p.groupId)?.name || '?'}) - ${p.price}€</div>
+                </div>
+                <div class="list-item-actions">
+                    <button class="up-btn" data-id="${p.id}" data-idx="${idx}" ${idx===0 ? 'disabled' : ''}>▲</button>
+                    <button class="down-btn" data-id="${p.id}" data-idx="${idx}" ${idx===filtered.length-1 ? 'disabled' : ''}>▼</button>
+                    <button class="edit-btn" data-id="${p.id}">✏️</button>
+                    <button class="delete-btn" data-id="${p.id}">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+        attachProductEvents(filtered);
+    }
+    function attachProductEvents(filtered) {
+        document.querySelectorAll("#productsList .up-btn").forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                let idx = parseInt(btn.dataset.idx);
+                if (idx <= 0) return;
+                const currentId = btn.dataset.id;
+                const prevId = filtered[idx-1].id;
+                const prodCurr = allProducts.find(p => p.id === currentId);
+                const prodPrev = allProducts.find(p => p.id === prevId);
+                const orderCurr = prodCurr.order || 0;
+                const orderPrev = prodPrev.order || 0;
+                prodCurr.order = orderPrev;
+                prodPrev.order = orderCurr;
+                await set(ref(db, `products/${currentId}/order`), orderPrev);
+                await set(ref(db, `products/${prevId}/order`), orderCurr);
+                renderProducts();
+                showToast("Reihenfolge aktualisiert");
+            };
+        });
+        document.querySelectorAll("#productsList .down-btn").forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                let idx = parseInt(btn.dataset.idx);
+                if (idx >= filtered.length-1) return;
+                const currentId = btn.dataset.id;
+                const nextId = filtered[idx+1].id;
+                const prodCurr = allProducts.find(p => p.id === currentId);
+                const prodNext = allProducts.find(p => p.id === nextId);
+                const orderCurr = prodCurr.order || 0;
+                const orderNext = prodNext.order || 0;
+                prodCurr.order = orderNext;
+                prodNext.order = orderCurr;
+                await set(ref(db, `products/${currentId}/order`), orderNext);
+                await set(ref(db, `products/${nextId}/order`), orderCurr);
+                renderProducts();
+                showToast("Reihenfolge aktualisiert");
+            };
+        });
+        document.querySelectorAll("#productsList .edit-btn").forEach(btn => btn.onclick = (e) => { e.stopPropagation(); openProductModal(btn.dataset.id); });
+        document.querySelectorAll("#productsList .delete-btn").forEach(btn => btn.onclick = (e) => { e.stopPropagation(); showConfirm("Produkt löschen?", async (ok) => { if(ok) { await remove(ref(db, `products/${btn.dataset.id}`)); await loadAllData(); showToast("Produkt gelöscht"); } }); });
+    }
+    function openProductModal(id=null) {
+        const isEdit = !!id;
+        const prod = isEdit ? allProducts.find(p => p.id == id) : null;
+        document.getElementById("modalTitle").innerText = isEdit ? "Produkt bearbeiten" : "Neues Produkt";
+        document.getElementById("modalBody").innerHTML = `
+            <input id="prodName" placeholder="Name" value="${prod?.name||''}">
+            <input id="prodPrice" type="number" step="0.01" placeholder="Preis" value="${prod?.price||''}">
+            <select id="prodGroup">${allGroups.map(g => `<option value="${g.id}" ${prod?.groupId===g.id ? 'selected' : ''}>${g.name}</option>`).join('')}</select>
+            <input type="file" id="prodImage" accept="image/*">
+            ${getImagePreview(prod?.imageUrl, "large")}
+            <div id="uploadStatus"></div>
+        `;
+        const modal = document.getElementById("genericModal");
+        modal.style.display = "flex";
+        document.getElementById("modalSaveBtn").onclick = async () => {
+            const name = document.getElementById("prodName").value;
+            const price = parseFloat(document.getElementById("prodPrice").value);
+            const groupId = document.getElementById("prodGroup").value;
+            const file = document.getElementById("prodImage").files[0];
+            let imageUrl = prod?.imageUrl || "";
+            if(file) {
+                const statusDiv = document.getElementById("uploadStatus");
+                statusDiv.innerHTML = "⏳ Hochladen...";
+                try { imageUrl = await uploadImageToImgBB(file); statusDiv.innerHTML = "✅ Fertig"; } catch(err) { showToast("Upload fehlgeschlagen", true); return; }
+            }
+            if(isEdit) await update(ref(db, `products/${id}`), { name, price, groupId, imageUrl });
+            else {
+                const existing = allProducts.filter(p => p.groupId === groupId);
+                const maxOrder = existing.length ? Math.max(...existing.map(p=>p.order||0)) : -1;
+                const newId = push(ref(db, 'products')).key;
+                await set(ref(db, `products/${newId}`), { name, price, groupId, imageUrl, order: maxOrder+1 });
+            }
+            modal.style.display = "none";
+            await loadAllData();
+            currentProductFilter = groupId;
+            renderProductFilter();
+            renderProducts();
+            showToast(isEdit ? "Produkt aktualisiert" : "Produkt hinzugefügt");
+        };
+        document.getElementById("modalCancelBtn").onclick = () => modal.style.display = "none";
+    }
+    
+    // ========== Zutaten & Extras (مع الصور) ==========
+    function renderZutaten() {
+        const container = document.getElementById("zutatenList");
+        container.innerHTML = allZutaten.map(z => `
+            <div class="list-item" data-id="${z.id}">
+                <div class="list-item-left">
+                    ${getImagePreview(z.imageUrl, "small")}
+                    <span><strong>${z.name}</strong> (${z.price}€)</span>
+                </div>
+                <div class="list-item-actions">
+                    <button class="edit-btn" data-id="${z.id}">✏️</button>
+                    <button class="delete-btn" data-id="${z.id}">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+        attachZutatenExtrasEvents("zutaten");
+    }
+    function renderExtras() {
+        const container = document.getElementById("extrasList");
+        container.innerHTML = allExtras.map(e => `
+            <div class="list-item" data-id="${e.id}">
+                <div class="list-item-left">
+                    ${getImagePreview(e.imageUrl, "small")}
+                    <span><strong>${e.name}</strong> (${e.price}€)</span>
+                </div>
+                <div class="list-item-actions">
+                    <button class="edit-btn" data-id="${e.id}">✏️</button>
+                    <button class="delete-btn" data-id="${e.id}">🗑️</button>
+                </div>
+            </div>
+        `).join('');
+        attachZutatenExtrasEvents("extras");
+    }
+    function attachZutatenExtrasEvents(collectionName) {
+        document.querySelectorAll(`#${collectionName}List .edit-btn`).forEach(btn => {
+            btn.onclick = (e) => { e.stopPropagation(); openZutatExtraModal(collectionName, btn.dataset.id); };
+        });
+        document.querySelectorAll(`#${collectionName}List .delete-btn`).forEach(btn => {
+            btn.onclick = (e) => { e.stopPropagation(); showConfirm(`${collectionName} löschen?`, async (ok) => { if(ok) { await remove(ref(db, `${collectionName}/${btn.dataset.id}`)); await loadAllData(); showToast(`${collectionName} gelöscht`); } }); };
+        });
+    }
+    function openZutatExtraModal(collectionName, id=null) {
+        const items = collectionName === "zutaten" ? allZutaten : allExtras;
+        const item = id ? items.find(x => x.id == id) : null;
+        document.getElementById("modalTitle").innerText = id ? `${collectionName} bearbeiten` : `Neue ${collectionName}`;
+        document.getElementById("modalBody").innerHTML = `
+            <input id="itemName" placeholder="Name" value="${item?.name||''}">
+            <input id="itemPrice" type="number" step="0.01" placeholder="Preis" value="${item?.price||0}">
+            <input type="file" id="itemImage" accept="image/*">
+            ${getImagePreview(item?.imageUrl, "large")}
+            <div id="uploadStatus"></div>
+        `;
+        const modal = document.getElementById("genericModal");
+        modal.style.display = "flex";
+        document.getElementById("modalSaveBtn").onclick = async () => {
+            const name = document.getElementById("itemName").value;
+            const price = parseFloat(document.getElementById("itemPrice").value);
+            const file = document.getElementById("itemImage").files[0];
+            let imageUrl = item?.imageUrl || "";
+            if(file) {
+                const statusDiv = document.getElementById("uploadStatus");
+                statusDiv.innerHTML = "⏳ Hochladen...";
+                try { imageUrl = await uploadImageToImgBB(file); statusDiv.innerHTML = "✅ Fertig"; } catch(err) { showToast("Upload fehlgeschlagen", true); return; }
+            }
+            if(id) {
+                await update(ref(db, `${collectionName}/${id}`), { name, price, imageUrl });
+                showToast(`${collectionName} aktualisiert`);
+            } else {
+                const newId = push(ref(db, collectionName)).key;
+                await set(ref(db, `${collectionName}/${newId}`), { name, price, imageUrl });
+                showToast(`Neue ${collectionName} hinzugefügt`);
+            }
+            modal.style.display = "none";
+            await loadAllData();
+        };
+        document.getElementById("modalCancelBtn").onclick = () => modal.style.display = "none";
+    }
+    
+    // ========== PIN ==========
+    document.getElementById("changePinBtn").onclick = async () => {
+        const new1 = document.getElementById("newPin1").value;
+        const new2 = document.getElementById("newPin2").value;
+        if (new1 === new2 && new1.length===4 && /^\d+$/.test(new1)) {
+            await set(ref(db, 'settings/adminPin'), new1);
+            currentAdminPin = new1;
+            document.getElementById("pinMessage").innerText = "PIN geändert!";
+            showToast("PIN erfolgreich geändert");
+        } else {
+            document.getElementById("pinMessage").innerText = "Ungültig";
+            showToast("PIN ungültig", true);
+        }
+    };
+    document.getElementById("logoutBtn").onclick = () => location.reload();
+    
+    function showTab(tabId) {
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active-panel"));
+        document.getElementById(`${tabId}Panel`).classList.add("active-panel");
+        document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+        document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add("active");
+        if (tabId === "produkte") renderProducts();
+    }
+    document.querySelectorAll(".tab-btn").forEach(btn => btn.addEventListener("click", () => showTab(btn.dataset.tab)));
+    
+    // أحداث القائمة الجانبية
+    document.getElementById("hamburgerBtn").onclick = () => { document.getElementById("sideMenu").style.left = "0"; document.getElementById("overlay").style.display = "block"; };
+    document.getElementById("overlay").onclick = () => { document.getElementById("sideMenu").style.left = "-280px"; document.getElementById("overlay").style.display = "none"; };
+    document.getElementById("closeBtn").onclick = () => { if (document.getElementById("sideMenu").style.left === "0px") { document.getElementById("sideMenu").style.left = "-280px"; document.getElementById("overlay").style.display = "none"; } else showToast("Schließen-Funktion später verfügbar"); };
+    
+    document.getElementById("addGroupBtn").onclick = () => openGroupModal();
+    document.getElementById("addProductBtn").onclick = () => openProductModal();
+    document.getElementById("addZutatBtn").onclick = () => openZutatExtraModal("zutaten");
+    document.getElementById("addExtraBtn").onclick = () => openZutatExtraModal("extras");
+</script>
+</body>
+</html>
