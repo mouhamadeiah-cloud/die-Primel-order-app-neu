@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Die Primel order App</title>
     <style>
-        /* جميع الأنماط كما هي بدون تغيير */
+        /* جميع الأنماط كما هي - لم تتغير */
         * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -277,7 +277,7 @@
     <a href="#" data-page="kueche">Küche</a>
     <a href="#" data-page="online">Online</a>
     <a href="#" data-page="admin">Admin</a>
-    <a href="#" data-page="kunden">Kunden display</a>
+    <a href="kunden_display.html" data-page="kunden">Kunden display</a>
 </div>
 
 <div class="main-layout">
@@ -386,6 +386,11 @@
         return JSON.parse(JSON.stringify(obj, (key, value) => (value === undefined ? null : value)));
     }
     
+    // حفظ السلة في Firebase لاستخدامها في Kunden Display
+    async function saveCartToFirebase() {
+        await set(ref(db, 'cart/current'), cart);
+    }
+    
     async function getNextOrderNumber() {
         const today = new Date().toISOString().slice(0,10);
         const counterRef = ref(db, `counters/orders/${today}`);
@@ -405,9 +410,11 @@
     });
     
     const titleEl = document.getElementById("appTitle");
-    titleEl.addEventListener("dblclick", () => {
+    titleEl.addEventListener("dblclick", async () => {
         showPrices = true;
         applyPriceVisibility();
+        // إرسال إشارة إلى Kunden Display
+        await set(ref(db, 'settings/showPricesForKunden'), true);
         if(priceTimeout) clearTimeout(priceTimeout);
         priceTimeout = setTimeout(() => { showPrices = false; applyPriceVisibility(); }, 60000);
     });
@@ -534,6 +541,7 @@
         if(!cart.length) {
             container.innerHTML = "<p>Leer</p>";
             document.getElementById("totalAmount").innerHTML = "";
+            saveCartToFirebase();
             return;
         }
         let html = '', total = 0;
@@ -604,6 +612,7 @@
                 else showToast("Bitte aktivieren Sie zuerst das Element", true);
             });
         });
+        saveCartToFirebase();
     }
     
     let currentEditIndex = null;
@@ -1119,8 +1128,12 @@
     document.getElementById("hamburgerBtn").onclick = () => { document.getElementById("sideMenu").style.left = "0"; document.getElementById("overlay").style.display = "block"; };
     document.querySelectorAll(".side-menu a").forEach(link => {
         link.addEventListener("click", (e) => {
-            e.preventDefault();
             let page = link.dataset.page;
+            // إذا كان الرابط لـ Kunden display، نسمح بالانتقال العادي
+            if (link.getAttribute("href") === "kunden_display.html") {
+                return; // لا نمنع الانتقال
+            }
+            e.preventDefault();
             if(page === "admin") window.location.href = "admin.html";
             else if(page === "kueche") window.location.href = "kueche.html";
             else showToast(`Seite ${page} kommt bald`);
