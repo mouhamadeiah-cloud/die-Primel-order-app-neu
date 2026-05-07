@@ -73,12 +73,22 @@
         <button class="tab-btn" data-tab="zutaten">🧂 Zutaten</button>
         <button class="tab-btn" data-tab="extras">➕ Extras</button>
         <button class="tab-btn" data-tab="pin">🔐 Pin</button>
+<button class="tab-btn" data-tab="kunden">🖼️ Kunden Display</button>
     </div>
     <div id="gruppenPanel" class="panel"><button class="add-btn" id="addGroupBtn">+ Neue Gruppe</button><div id="groupsList" class="item-list"></div></div>
     <div id="produktePanel" class="panel"><select id="productGroupFilter" class="filter-select"></select><button class="add-btn" id="addProductBtn">+ Neues Produkt</button><div id="productsList" class="item-list"></div></div>
     <div id="zutatenPanel" class="panel"><button class="add-btn" id="addZutatBtn">+ Neue Zutat</button><div id="zutatenList" class="item-list"></div></div>
     <div id="extrasPanel" class="panel"><button class="add-btn" id="addExtraBtn">+ Neue Extra</button><div id="extrasList" class="item-list"></div></div>
     <div id="pinPanel" class="panel"><h3>PIN ändern</h3><input type="password" id="newPin1" placeholder="Neuer PIN (4 Ziffern)"><input type="password" id="newPin2" placeholder="Wiederholen"><button id="changePinBtn">Speichern</button><p id="pinMessage"></p><hr><button id="logoutBtn">Abmelden</button></div>
+</div>
+<div id="kundenPanel" class="panel">
+    <h3>Hintergrundbild für Kunden Display</h3>
+    <div style="margin: 16px 0;">
+        <input type="file" id="kundenBgImage" accept="image/*">
+        <button id="uploadKundenBgBtn" class="add-btn" style="margin-top: 10px;">Hintergrund hochladen</button>
+    </div>
+    <div id="kundenBgPreview" style="margin: 16px 0; text-align: center;"></div>
+    <div id="kundenBgStatus"></div>
 </div>
 
 <div id="genericModal" class="modal"><div class="modal-card"><h3 id="modalTitle"></h3><div id="modalBody"></div><button id="modalSaveBtn">Speichern</button><button id="modalCancelBtn" class="cancel-btn">Abbrechen</button></div></div>
@@ -342,7 +352,7 @@
         document.querySelectorAll("#productsList .edit-btn").forEach(btn => btn.onclick = (e) => { e.stopPropagation(); openProductModal(btn.dataset.id); });
         document.querySelectorAll("#productsList .delete-btn").forEach(btn => btn.onclick = (e) => { e.stopPropagation(); showConfirm("Produkt löschen?", async (ok) => { if(ok) { await remove(ref(db, `products/${btn.dataset.id}`)); await loadAllData(); showToast("Produkt gelöscht"); } }); });
     }
-    function openProductModal(id=null) {
+       function openProductModal(id=null) {
         const isEdit = !!id;
         const prod = isEdit ? allProducts.find(p => p.id == id) : null;
         document.getElementById("modalTitle").innerText = isEdit ? "Produkt bearbeiten" : "Neues Produkt";
@@ -350,6 +360,7 @@
             <input id="prodName" placeholder="Name" value="${prod?.name||''}">
             <input id="prodPrice" type="number" step="0.01" placeholder="Preis" value="${prod?.price||''}">
             <select id="prodGroup">${allGroups.map(g => `<option value="${g.id}" ${prod?.groupId===g.id ? 'selected' : ''}>${g.name}</option>`).join('')}</select>
+            <textarea id="prodDescription" rows="3" placeholder="Beschreibung (für Online-Seite)" style="width:100%; margin:8px 0; padding:10px; border-radius:20px; border:1px solid #ccc; resize:vertical;">${prod?.description || ''}</textarea>
             <input type="file" id="prodImage" accept="image/*">
             ${getImagePreview(prod?.imageUrl, "large")}
             <div id="uploadStatus"></div>
@@ -360,6 +371,7 @@
             const name = document.getElementById("prodName").value;
             const price = parseFloat(document.getElementById("prodPrice").value);
             const groupId = document.getElementById("prodGroup").value;
+            const description = document.getElementById("prodDescription").value;
             const file = document.getElementById("prodImage").files[0];
             let imageUrl = prod?.imageUrl || "";
             if(file) {
@@ -367,12 +379,12 @@
                 statusDiv.innerHTML = "⏳ Hochladen...";
                 try { imageUrl = await uploadImageToImgBB(file); statusDiv.innerHTML = "✅ Fertig"; } catch(err) { showToast("Upload fehlgeschlagen", true); return; }
             }
-            if(isEdit) await update(ref(db, `products/${id}`), { name, price, groupId, imageUrl });
+            if(isEdit) await update(ref(db, `products/${id}`), { name, price, groupId, description, imageUrl });
             else {
                 const existing = allProducts.filter(p => p.groupId === groupId);
                 const maxOrder = existing.length ? Math.max(...existing.map(p=>p.order||0)) : -1;
                 const newId = push(ref(db, 'products')).key;
-                await set(ref(db, `products/${newId}`), { name, price, groupId, imageUrl, order: maxOrder+1 });
+                await set(ref(db, `products/${newId}`), { name, price, groupId, description, imageUrl, order: maxOrder+1 });
             }
             modal.style.display = "none";
             await loadAllData();
@@ -496,6 +508,49 @@
     document.getElementById("addProductBtn").onclick = () => openProductModal();
     document.getElementById("addZutatBtn").onclick = () => openZutatExtraModal("zutaten");
     document.getElementById("addExtraBtn").onclick = () => openZutatExtraModal("extras");
+    // ========== Kunden Display Hintergrund ==========
+    async function loadKundenBackground() {
+        const bgRef = ref(db, 'settings/kundenBackground');
+        const snapshot = await get(bgRef);
+        const previewDiv = document.getElementById("kundenBgPreview");
+        if (previewDiv) {
+            if (snapshot.exists()) {
+                const url = snapshot.val();
+                previewDiv.innerHTML = `<img src="${url}" style="max-width:100%; max-height:200px; border-radius:20px;">`;
+            } else {
+                previewDiv.innerHTML = "<p>Kein Hintergrundbild hochgeladen</p>";
+            }
+        }
+    }
+    
+    const uploadBtn = document.getElementById("uploadKundenBgBtn");
+    if (uploadBtn) {
+        uploadBtn.onclick = async () => {
+            const fileInput = document.getElementById("kundenBgImage");
+            const file = fileInput.files[0];
+            const statusDiv = document.getElementById("kundenBgStatus");
+            if (!file) { showToast("Bitte wählen Sie ein Bild aus", true); return; }
+            statusDiv.innerHTML = "⏳ Hochladen...";
+            try {
+                const imageUrl = await uploadImageToImgBB(file);
+                await set(ref(db, 'settings/kundenBackground'), imageUrl);
+                statusDiv.innerHTML = "✅ Hintergrund gespeichert!";
+                await loadKundenBackground();
+                showToast("Hintergrund erfolgreich aktualisiert");
+            } catch(err) {
+                statusDiv.innerHTML = "❌ Fehler beim Hochladen";
+                showToast("Upload fehlgeschlagen", true);
+            }
+        };
+    }
+    
+    // تحميل الخلفية عند فتح تبويب Kunden Display
+    const kundenTab = document.querySelector('.tab-btn[data-tab="kunden"]');
+    if (kundenTab) {
+        kundenTab.addEventListener('click', () => {
+            setTimeout(() => loadKundenBackground(), 100);
+        });
+    }
 </script>
 </body>
 </html>
