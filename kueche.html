@@ -539,20 +539,23 @@
         document.getElementById("orderModal").style.display = "flex";
     }
     
-    async function loadOccupiedTables() {
-        const snapshot = await get(ref(db, 'orders'));
-        const data = snapshot.val();
-        const activeTables = new Set();
-        if (data) {
-            Object.values(data).forEach(order => {
-                let t = order.table;
-                if (t !== "takeaway" && !isNaN(parseInt(t)) && order.status !== "completed" && order.visibleInKitchen !== false) {
-                    activeTables.add(parseInt(t));
-                }
-            });
-        }
-        return Array.from(activeTables).sort((a,b)=>a-b);
+async function loadOccupiedTables() {
+    const snapshot = await get(ref(db, 'orders'));
+    const data = snapshot.val();
+    const activeTables = new Set();
+    if (data) {
+        Object.values(data).forEach(order => {
+            let t = order.table;
+            // نضيف الطاولة فقط إذا:
+            // 1. ليست takeaway
+            // 2. الطلب لم يكتمل نهائياً (status !== "completed")
+            if (t !== "takeaway" && !isNaN(parseInt(t)) && order.status !== "completed") {
+                activeTables.add(parseInt(t));
+            }
+        });
     }
+    return Array.from(activeTables).sort((a,b)=>a-b);
+}
     
     async function renderTablesDropdown() {
         const activeTables = await loadOccupiedTables();
