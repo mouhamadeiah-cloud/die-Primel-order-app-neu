@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Die Primel order App</title>
     <style>
-        /* جميع الأنماط كما هي - مع تعديلات القائمة المنسدلة */
+        /* جميع الأنماط كما هي - لم تتغير */
         * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -43,23 +43,13 @@
         .side-menu a { display:block; font-size:1.3rem; text-decoration:none; color:var(--primary-green); padding:12px; font-weight:bold; }
         .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); z-index:150; display:none; }
         .main-layout { display:flex; flex:1; overflow:hidden; gap:2px; }
-        .left-panel { width:70%; background:var(--light-bg); overflow-y:auto; padding:8px; position:relative; }
+        .left-panel { width:70%; background:var(--light-bg); overflow-y:auto; padding:8px; }
         .right-panel { width:30%; background:white; border-left:2px solid var(--primary-gold); display:flex; flex-direction:column; overflow:hidden; padding:8px; }
-        .dual-btn { display:flex; gap:8px; margin-bottom:15px; position:relative; }
+        .dual-btn { display:flex; gap:8px; margin-bottom:15px; }
         .btn-half { flex:1; background:var(--primary-green); color:white; border:none; padding:14px; border-radius:40px; font-weight:bold; cursor:pointer; }
         .dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            max-height: 70vh;
-            overflow-y: auto;
-            display: none;
-            z-index: 1000;
-            margin-top: 5px;
+            background:white; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,0.2);
+            margin-bottom:15px; max-height:70vh; overflow-y:auto; display:none;
         }
         .dropdown-item { padding:12px 16px; border-bottom:1px solid #ddd; display:flex; align-items:center; gap:12px; cursor:pointer; }
         .dropdown-item img { width:40px; height:40px; border-radius:20px; object-fit:cover; }
@@ -293,43 +283,6 @@
             justify-content: space-between;
             align-items: center;
         }
-        /* إخفاء عنوان المجموعة */
-        #selectedGroupTitle {
-            display: none;
-        }
-        /* Modal تأكيد جميل */
-        .confirm-modal-content {
-            max-width: 350px;
-            text-align: center;
-        }
-        .confirm-modal-content h3 {
-            color: var(--danger);
-            margin-bottom: 16px;
-        }
-        .confirm-modal-content p {
-            margin-bottom: 24px;
-            font-size: 1.1rem;
-        }
-        .confirm-buttons {
-            display: flex;
-            gap: 12px;
-        }
-        .confirm-buttons button {
-            flex: 1;
-            padding: 12px;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-        }
-        .confirm-yes {
-            background: var(--danger);
-            color: white;
-        }
-        .confirm-no {
-            background: #6c757d;
-            color: white;
-        }
     </style>
 </head>
 <body>
@@ -400,19 +353,6 @@
 <div id="extrasModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Extras</h3><button class="close-modal" id="closeExtrasModalBtn">&times;</button></div><div id="extrasList" class="option-grid"></div></div></div>
 <div id="zutatenModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Zutaten</h3><button class="close-modal" id="closeZutatenModalBtn">&times;</button></div><div id="zutatenList" class="option-grid"></div></div></div>
 <div id="tablesSelectionModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Tisch wählen</h3><button class="close-modal" id="closeTablesModalBtn">&times;</button></div><div id="tablesGrid" class="table-grid"></div><button id="takeawayBtn" class="takeaway-btn">🥡 Takeaway</button></div></div>
-
-<!-- Modal تأكيد جميل بدلاً من confirm() -->
-<div id="confirmModal" class="modal">
-    <div class="modal-content confirm-modal-content">
-        <h3>⚠️ Tisch aufheben</h3>
-        <p id="confirmMessage">Möchten Sie diesen Tisch wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.</p>
-        <div class="confirm-buttons">
-            <button id="confirmYesBtn" class="confirm-yes">Ja, aufheben</button>
-            <button id="confirmNoBtn" class="confirm-no">Abbrechen</button>
-        </div>
-    </div>
-</div>
-
 <div id="toastMsg" class="toast"></div>
 
 <script type="module">
@@ -460,36 +400,6 @@
         toast.classList.add("show");
         setTimeout(() => toast.classList.remove("show"), 2500);
     }
-    
-    // دالة عرض Modal تأكيد جميل
-    function showConfirmDialog(message, onConfirm) {
-        const modal = document.getElementById("confirmModal");
-        const msgSpan = document.getElementById("confirmMessage");
-        msgSpan.innerText = message;
-        modal.style.display = "flex";
-        
-        const yesBtn = document.getElementById("confirmYesBtn");
-        const noBtn = document.getElementById("confirmNoBtn");
-        
-        const cleanup = () => {
-            modal.style.display = "none";
-            yesBtn.removeEventListener("click", yesHandler);
-            noBtn.removeEventListener("click", noHandler);
-        };
-        
-        const yesHandler = () => {
-            cleanup();
-            onConfirm(true);
-        };
-        const noHandler = () => {
-            cleanup();
-            onConfirm(false);
-        };
-        
-        yesBtn.addEventListener("click", yesHandler);
-        noBtn.addEventListener("click", noHandler);
-    }
-    
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
     function cleanForFirebase(obj) {
         return JSON.parse(JSON.stringify(obj, (key, value) => (value === undefined ? null : value)));
@@ -522,6 +432,7 @@
     titleEl.addEventListener("dblclick", async () => {
         showPrices = true;
         applyPriceVisibility();
+        // إرسال إشارة إلى Kunden Display
         await set(ref(db, 'settings/showPricesForKunden'), true);
         if(priceTimeout) clearTimeout(priceTimeout);
         priceTimeout = setTimeout(() => { showPrices = false; applyPriceVisibility(); }, 60000);
@@ -941,9 +852,6 @@
         if(currentSelectedTable === tableNum) {
             exitTableMode(true);
         }
-        
-        // إغلاق القائمة المنسدلة
-        document.getElementById("tablesDropdown").style.display = "none";
     }
     
     async function renderTablesDropdown() {
@@ -974,13 +882,11 @@
                 btn.addEventListener("click", async (e) => {
                     e.stopPropagation();
                     const tableNum = parseInt(btn.dataset.table);
-                    showConfirmDialog(`Tisch ${tableNum} wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.`, async (ok) => {
-                        if (ok) {
-                            await closeTable(tableNum);
-                            await renderTablesDropdown();
-                            showToast(`Tisch ${tableNum} aufgehoben`);
-                        }
-                    });
+                    if(confirm(`Tisch ${tableNum} wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.`)) {
+                        await closeTable(tableNum);
+                        await renderTablesDropdown();
+                        showToast(`Tisch ${tableNum} aufgehoben`);
+                    }
                 });
             });
         }
@@ -988,17 +894,8 @@
     
     async function selectOccupiedTable(tableNum) {
         if(currentSelectedTable !== null) {
-            showConfirmDialog("Möchten Sie die aktuelle Tabellenansicht verlassen? Nicht gespeicherte Änderungen gehen verloren.", async (ok) => {
-                if(ok) {
-                    await doSelectOccupiedTable(tableNum);
-                }
-            });
-        } else {
-            await doSelectOccupiedTable(tableNum);
+            if(!confirm("Möchten Sie die aktuelle Tabellenansicht verlassen? Nicht gespeicherte Änderungen gehen verloren.")) return;
         }
-    }
-    
-    async function doSelectOccupiedTable(tableNum) {
         const stateRef = ref(db, `tableStates/${tableNum}`);
         const stateSnap = await get(stateRef);
         if(stateSnap.exists() && stateSnap.val().items && Array.isArray(stateSnap.val().items)) {
@@ -1062,8 +959,6 @@
         renderCart();
         saveCartToFirebase();
         updateUITableMode(false);
-        // إغلاق القائمة المنسدلة للطاولات
-        document.getElementById("tablesDropdown").style.display = "none";
         showToast("Tabellenmodus beendet");
     }
     
@@ -1246,22 +1141,20 @@
     
     document.getElementById("cancelTableBtn").onclick = async () => {
         if(!currentSelectedTable) return;
-        showConfirmDialog(`Tisch ${currentSelectedTable} wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.`, async (ok) => {
-            if(ok) {
-                await set(ref(db, `tableStates/${currentSelectedTable}`), null);
-                const snapshot = await get(ref(db, 'orders'));
-                const data = snapshot.val();
-                if(data) {
-                    for(let [id, order] of Object.entries(data)) {
-                        if(order.table == currentSelectedTable && order.status !== "completed") {
-                            await update(ref(db, `orders/${id}`), { status: "completed" });
-                        }
+        if(confirm("Tisch wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.")) {
+            await set(ref(db, `tableStates/${currentSelectedTable}`), null);
+            const snapshot = await get(ref(db, 'orders'));
+            const data = snapshot.val();
+            if(data) {
+                for(let [id, order] of Object.entries(data)) {
+                    if(order.table == currentSelectedTable && order.status !== "completed") {
+                        await update(ref(db, `orders/${id}`), { status: "completed" });
                     }
                 }
-                exitTableMode(true);
-                showToast("Tisch aufgehoben");
             }
-        });
+            exitTableMode(true);
+            showToast("Tisch aufgehoben");
+        }
     };
     
     document.getElementById("saveTableChangesBtn").onclick = async () => {
