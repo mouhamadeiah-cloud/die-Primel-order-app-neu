@@ -325,6 +325,40 @@
             font-size: 1.2rem;
             grid-column: 1 / -1;
         }
+        /* زر تفعيل الصوت */
+        .sound-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .sound-btn {
+            background: var(--primary-green);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 60px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .sound-btn:hover {
+            transform: scale(1.05);
+            background: #1e4f3a;
+        }
+        .sound-overlay p {
+            color: white;
+            margin-top: 20px;
+            font-size: 1rem;
+        }
         @media (max-width: 768px) {
             .orders-grid {
                 grid-template-columns: 1fr;
@@ -335,6 +369,10 @@
             }
             .kitchen-container {
                 padding: 12px;
+            }
+            .sound-btn {
+                padding: 15px 30px;
+                font-size: 1.2rem;
             }
         }
     </style>
@@ -379,9 +417,15 @@
 
 <div id="toastMsg" class="toast"></div>
 
+<!-- زر تفعيل الصوت -->
+<div id="soundActivationOverlay" class="sound-overlay">
+    <button id="activateSoundBtn" class="sound-btn">🔊 Ton aktivieren</button>
+    <p>Klicken Sie hier, um Benachrichtigungstöne zu aktivieren</p>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, onValue, update, set, onChildAdded } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
     const firebaseConfig = {
         apiKey: "AIzaSyAEupmyQlU5MK_tRDIlJpjwryKU0nHpjQk",
@@ -399,6 +443,7 @@
     let orders = [];
     let currentModalOrderId = null;
     let soundEnabled = false;
+    let audioContext = null;
     
     function showToast(msg, isErr = false) {
         const toast = document.getElementById("toastMsg");
@@ -408,33 +453,47 @@
         setTimeout(() => toast.classList.remove("show"), 2500);
     }
     
-    // تشغيل الجرس من ملف محلي
+    // تشغيل الصوت باستخدام Web Audio API (لا يحتاج ملف خارجي)
     function playSound() {
-        if (!soundEnabled) {
-            console.log("Sound not enabled yet");
-            return;
-        }
-        const audio = new Audio("./bell.mp3");
-        audio.volume = 0.9;
-        audio.play().catch(e => {
-            console.log("Audio play failed:", e);
-            // إذا فشل التشغيل نعرض إشعار مرئي بديل
-            showToast("🔔 Neue Bestellung! (Ton konnte nicht abgespielt werden)");
-        });
-    }
-    
-    // تفعيل الصوت بعد أول نقرة من المستخدم على الصفحة
-    function enableSoundOnFirstClick() {
-        document.body.addEventListener('click', () => {
-            if (!soundEnabled) {
-                soundEnabled = true;
-                // اختبار تشغيل الصوت (صامت تقريباً) لتفعيل السياسة
-                const testAudio = new Audio("./bell.mp3");
-                testAudio.volume = 0.01;
-                testAudio.play().catch(e => console.log("Test sound failed"));
-                showToast("🔊 Ton aktiviert - neue Bestellungen klingen jetzt");
+        if (!soundEnabled) return;
+        
+        try {
+            // إنشاء AudioContext إذا لم يكن موجوداً
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
             }
-        }, { once: true });
+            
+            // استئناف السياق إذا كان معلقاً
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // نغمة عالية أولاً
+            oscillator.frequency.value = 880;
+            gainNode.gain.value = 0.3;
+            
+            oscillator.start();
+            
+            // تغيير التردد بعد 100ms لنغمة ثانية
+            setTimeout(() => {
+                if (oscillator) oscillator.frequency.value = 660;
+            }, 100);
+            
+            // إيقاف الصوت بعد 400ms
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.4);
+            oscillator.stop(audioContext.currentTime + 0.4);
+            
+        } catch(e) {
+            console.log("Web Audio failed:", e);
+            // إشعار مرئي بديل
+            showToast("🔔 Neue Bestellung!");
+        }
     }
     
     function formatTime(timestamp) {
@@ -582,23 +641,21 @@
         }
     }
     
-    // ========== جرس فوري باستخدام sounds/ring مع ملف محلي ==========
+    // ========== جرس فوري باستخدام sounds/ring ==========
     const ringRef = ref(db, 'sounds/ring');
     onValue(ringRef, async (snapshot) => {
         const shouldRing = snapshot.val();
         if (shouldRing === true) {
             playSound();
             showToast("🔔 Neue Bestellung eingegangen!");
-            // إعادة تعيين الإشارة فوراً
             await set(ringRef, false);
         }
     });
     
-    // ========== الاستماع للطلبات الجديدة وعرضها ==========
+    // ========== الاستماع للطلبات وعرضها ==========
     function listenForOrders() {
         const ordersRef = ref(db, 'orders');
         
-        // الاستماع للتغييرات في جميع الطلبات (لعرض القائمة)
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
             const newOrders = [];
@@ -678,6 +735,33 @@
         window.location.href = "index.html";
     };
     
+    // ========== تفعيل الصوت عند الضغط على الزر ==========
+    document.getElementById("activateSoundBtn").onclick = () => {
+        soundEnabled = true;
+        // إنشاء AudioContext وتشغيل صوت تجريبي قصير
+        try {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.frequency.value = 660;
+            gainNode.gain.value = 0.2;
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        } catch(e) {
+            console.log("Test sound failed:", e);
+        }
+        document.getElementById("soundActivationOverlay").style.display = "none";
+        showToast("🔊 Ton aktiviert - neue Bestellungen klingen jetzt");
+    };
+    
     // تهيئة العداد لليوم الحالي
     (async function initCounter() {
         const today = new Date().toISOString().slice(0,10);
@@ -693,10 +777,7 @@
         }
     })();
     
-    // تفعيل الصوت عند أول نقرة
-    enableSoundOnFirstClick();
-    
-    // بدء الاستماع للطلبات
+    // بدء الاستماع للطلبات بعد تفعيل الصوت (لكن نبدأ الاستماع فوراً)
     listenForOrders();
 </script>
 </body>
