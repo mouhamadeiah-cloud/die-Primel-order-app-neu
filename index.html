@@ -45,21 +45,11 @@
         .main-layout { display:flex; flex:1; overflow:hidden; gap:2px; }
         .left-panel { width:70%; background:var(--light-bg); overflow-y:auto; padding:8px; }
         .right-panel { width:30%; background:white; border-left:2px solid var(--primary-gold); display:flex; flex-direction:column; overflow:hidden; padding:8px; }
-        .dual-btn { display:flex; gap:8px; margin-bottom:15px; position:relative; }
+        .dual-btn { display:flex; gap:8px; margin-bottom:15px; }
         .btn-half { flex:1; background:var(--primary-green); color:white; border:none; padding:14px; border-radius:40px; font-weight:bold; cursor:pointer; }
         .dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-            max-height: 70vh;
-            overflow-y: auto;
-            display: none;
-            z-index: 1000;
-            margin-top: 5px;
+            background:white; border-radius:20px; box-shadow:0 8px 20px rgba(0,0,0,0.2);
+            margin-bottom:15px; max-height:70vh; overflow-y:auto; display:none;
         }
         .dropdown-item { padding:12px 16px; border-bottom:1px solid #ddd; display:flex; align-items:center; gap:12px; cursor:pointer; }
         .dropdown-item img { width:40px; height:40px; border-radius:20px; object-fit:cover; }
@@ -282,7 +272,7 @@
             border-radius: 20px;
             padding: 4px 12px;
             cursor: pointer;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             margin-left: auto;
         }
         .close-table-btn:hover {
@@ -292,46 +282,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-        /* إخفاء عنوان المجموعة مؤقتاً عند فتح قائمة الطاولات */
-        #selectedGroupTitle.hide-title {
-            display: none;
-        }
-        /* Modal تأكيد جميل */
-        .confirm-modal-content {
-            max-width: 350px;
-            text-align: center;
-        }
-        .confirm-modal-content h3 {
-            color: var(--danger);
-            margin-bottom: 16px;
-            font-size: 1.4rem;
-        }
-        .confirm-modal-content p {
-            margin-bottom: 24px;
-            font-size: 1rem;
-            line-height: 1.4;
-        }
-        .confirm-buttons {
-            display: flex;
-            gap: 12px;
-        }
-        .confirm-buttons button {
-            flex: 1;
-            padding: 12px;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-            font-size: 0.9rem;
-        }
-        .confirm-yes {
-            background: var(--danger);
-            color: white;
-        }
-        .confirm-no {
-            background: #6c757d;
-            color: white;
         }
     </style>
 </head>
@@ -403,19 +353,6 @@
 <div id="extrasModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Extras</h3><button class="close-modal" id="closeExtrasModalBtn">&times;</button></div><div id="extrasList" class="option-grid"></div></div></div>
 <div id="zutatenModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Zutaten</h3><button class="close-modal" id="closeZutatenModalBtn">&times;</button></div><div id="zutatenList" class="option-grid"></div></div></div>
 <div id="tablesSelectionModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>Tisch wählen</h3><button class="close-modal" id="closeTablesModalBtn">&times;</button></div><div id="tablesGrid" class="table-grid"></div><button id="takeawayBtn" class="takeaway-btn">🥡 Takeaway</button></div></div>
-
-<!-- Modal تأكيد جميل بدلاً من confirm() -->
-<div id="confirmModal" class="modal">
-    <div class="modal-content confirm-modal-content">
-        <h3>⚠️ Tisch aufheben</h3>
-        <p id="confirmMessage">Möchten Sie diesen Tisch wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.</p>
-        <div class="confirm-buttons">
-            <button id="confirmYesBtn" class="confirm-yes">Ja, aufheben</button>
-            <button id="confirmNoBtn" class="confirm-no">Abbrechen</button>
-        </div>
-    </div>
-</div>
-
 <div id="toastMsg" class="toast"></div>
 
 <script type="module">
@@ -463,36 +400,6 @@
         toast.classList.add("show");
         setTimeout(() => toast.classList.remove("show"), 2500);
     }
-    
-    // دالة عرض Modal تأكيد جميل
-    function showConfirmDialog(message, onConfirm) {
-        const modal = document.getElementById("confirmModal");
-        const msgSpan = document.getElementById("confirmMessage");
-        msgSpan.innerText = message;
-        modal.style.display = "flex";
-        
-        const yesBtn = document.getElementById("confirmYesBtn");
-        const noBtn = document.getElementById("confirmNoBtn");
-        
-        const cleanup = () => {
-            modal.style.display = "none";
-            yesBtn.removeEventListener("click", yesHandler);
-            noBtn.removeEventListener("click", noHandler);
-        };
-        
-        const yesHandler = () => {
-            cleanup();
-            onConfirm(true);
-        };
-        const noHandler = () => {
-            cleanup();
-            onConfirm(false);
-        };
-        
-        yesBtn.addEventListener("click", yesHandler);
-        noBtn.addEventListener("click", noHandler);
-    }
-    
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
     function cleanForFirebase(obj) {
         return JSON.parse(JSON.stringify(obj, (key, value) => (value === undefined ? null : value)));
@@ -525,6 +432,7 @@
     titleEl.addEventListener("dblclick", async () => {
         showPrices = true;
         applyPriceVisibility();
+        // إرسال إشارة إلى Kunden Display
         await set(ref(db, 'settings/showPricesForKunden'), true);
         if(priceTimeout) clearTimeout(priceTimeout);
         priceTimeout = setTimeout(() => { showPrices = false; applyPriceVisibility(); }, 60000);
@@ -579,8 +487,6 @@
         renderItems();
         const groupName = allGroups.find(g => g.id === groupId)?.name || "";
         document.getElementById("selectedGroupTitle").innerText = groupName ? `📁 ${groupName}` : "";
-        // إظهار العنوان إذا كان مخفياً
-        document.getElementById("selectedGroupTitle").classList.remove("hide-title");
     }
     function renderItems() {
         const container = document.getElementById("itemsContainer");
@@ -946,10 +852,6 @@
         if(currentSelectedTable === tableNum) {
             exitTableMode(true);
         }
-        
-        // إغلاق القائمة المنسدلة وإعادة عنوان المجموعة
-        document.getElementById("tablesDropdown").style.display = "none";
-        document.getElementById("selectedGroupTitle").classList.remove("hide-title");
     }
     
     async function renderTablesDropdown() {
@@ -961,7 +863,7 @@
             container.innerHTML = activeList.map(t => `
                 <div class="dropdown-item" data-table="${t}">
                     <span>🪑 Tisch ${t}</span>
-                    <button class="close-table-btn" data-table="${t}" title="Tisch aufheben">✖</button>
+                    <button class="close-table-btn" data-table="${t}" title="Tisch aufheben">❌</button>
                 </div>
             `).join('');
             
@@ -972,7 +874,6 @@
                     const tableNum = parseInt(div.dataset.table);
                     await selectOccupiedTable(tableNum);
                     document.getElementById("tablesDropdown").style.display = "none";
-                    document.getElementById("selectedGroupTitle").classList.remove("hide-title");
                 });
             });
             
@@ -981,13 +882,11 @@
                 btn.addEventListener("click", async (e) => {
                     e.stopPropagation();
                     const tableNum = parseInt(btn.dataset.table);
-                    showConfirmDialog(`Tisch ${tableNum} wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.`, async (ok) => {
-                        if (ok) {
-                            await closeTable(tableNum);
-                            await renderTablesDropdown();
-                            showToast(`Tisch ${tableNum} aufgehoben`);
-                        }
-                    });
+                    if(confirm(`Tisch ${tableNum} wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.`)) {
+                        await closeTable(tableNum);
+                        await renderTablesDropdown();
+                        showToast(`Tisch ${tableNum} aufgehoben`);
+                    }
                 });
             });
         }
@@ -995,17 +894,8 @@
     
     async function selectOccupiedTable(tableNum) {
         if(currentSelectedTable !== null) {
-            showConfirmDialog("Möchten Sie die aktuelle Tabellenansicht verlassen? Nicht gespeicherte Änderungen gehen verloren.", async (ok) => {
-                if(ok) {
-                    await doSelectOccupiedTable(tableNum);
-                }
-            });
-        } else {
-            await doSelectOccupiedTable(tableNum);
+            if(!confirm("Möchten Sie die aktuelle Tabellenansicht verlassen? Nicht gespeicherte Änderungen gehen verloren.")) return;
         }
-    }
-    
-    async function doSelectOccupiedTable(tableNum) {
         const stateRef = ref(db, `tableStates/${tableNum}`);
         const stateSnap = await get(stateRef);
         if(stateSnap.exists() && stateSnap.val().items && Array.isArray(stateSnap.val().items)) {
@@ -1069,9 +959,6 @@
         renderCart();
         saveCartToFirebase();
         updateUITableMode(false);
-        // إغلاق القائمة المنسدلة للطاولات وإعادة عنوان المجموعة
-        document.getElementById("tablesDropdown").style.display = "none";
-        document.getElementById("selectedGroupTitle").classList.remove("hide-title");
         showToast("Tabellenmodus beendet");
     }
     
@@ -1254,22 +1141,20 @@
     
     document.getElementById("cancelTableBtn").onclick = async () => {
         if(!currentSelectedTable) return;
-        showConfirmDialog(`Tisch ${currentSelectedTable} wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.`, async (ok) => {
-            if(ok) {
-                await set(ref(db, `tableStates/${currentSelectedTable}`), null);
-                const snapshot = await get(ref(db, 'orders'));
-                const data = snapshot.val();
-                if(data) {
-                    for(let [id, order] of Object.entries(data)) {
-                        if(order.table == currentSelectedTable && order.status !== "completed") {
-                            await update(ref(db, `orders/${id}`), { status: "completed" });
-                        }
+        if(confirm("Tisch wirklich aufheben? Alle offenen Bestellungen werden abgeschlossen.")) {
+            await set(ref(db, `tableStates/${currentSelectedTable}`), null);
+            const snapshot = await get(ref(db, 'orders'));
+            const data = snapshot.val();
+            if(data) {
+                for(let [id, order] of Object.entries(data)) {
+                    if(order.table == currentSelectedTable && order.status !== "completed") {
+                        await update(ref(db, `orders/${id}`), { status: "completed" });
                     }
                 }
-                exitTableMode(true);
-                showToast("Tisch aufgehoben");
             }
-        });
+            exitTableMode(true);
+            showToast("Tisch aufgehoben");
+        }
     };
     
     document.getElementById("saveTableChangesBtn").onclick = async () => {
@@ -1300,38 +1185,21 @@
         const dd = document.getElementById("groupDropdown");
         const tablesDD = document.getElementById("tablesDropdown");
         if(dd.style.display === "block") dd.style.display = "none";
-        else { 
-            dd.style.display = "block"; 
-            tablesDD.style.display = "none"; 
-            // عند فتح قائمة المجموعات، نضمن ظهور عنوان المجموعة
-            document.getElementById("selectedGroupTitle").classList.remove("hide-title");
-        }
+        else { dd.style.display = "block"; tablesDD.style.display = "none"; }
     };
     document.getElementById("tablesBtn").onclick = async () => {
         const dd = document.getElementById("tablesDropdown");
         const groupsDD = document.getElementById("groupDropdown");
         if(dd.style.display === "block") dd.style.display = "none";
-        else { 
-            await renderTablesDropdown(); 
-            dd.style.display = "block"; 
-            groupsDD.style.display = "none";
-            // إخفاء عنوان المجموعة مؤقتاً عند فتح قائمة الطاولات
-            document.getElementById("selectedGroupTitle").classList.add("hide-title");
-        }
+        else { await renderTablesDropdown(); dd.style.display = "block"; groupsDD.style.display = "none"; }
     };
     document.addEventListener("click", (e) => {
         const groupsBtn = document.getElementById("groupsBtn");
         const tablesBtn = document.getElementById("tablesBtn");
         const groupsDD = document.getElementById("groupDropdown");
         const tablesDD = document.getElementById("tablesDropdown");
-        if(!groupsBtn.contains(e.target) && !groupsDD.contains(e.target)) {
-            groupsDD.style.display = "none";
-        }
-        if(!tablesBtn.contains(e.target) && !tablesDD.contains(e.target)) {
-            tablesDD.style.display = "none";
-            // عند إغلاق قائمة الطاولات، نعيد عنوان المجموعة
-            document.getElementById("selectedGroupTitle").classList.remove("hide-title");
-        }
+        if(!groupsBtn.contains(e.target) && !groupsDD.contains(e.target)) groupsDD.style.display = "none";
+        if(!tablesBtn.contains(e.target) && !tablesDD.contains(e.target)) tablesDD.style.display = "none";
     });
     
     document.getElementById("overlay").onclick = () => { document.getElementById("sideMenu").style.left = "-280px"; document.getElementById("overlay").style.display = "none"; };
