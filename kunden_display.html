@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Kunden Display - Die Primel</title>
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAI0lEQVR42mNkYGBoYGBgYEAEGBlYGBgYGAAG/w9CIMIwCg0DAFr6B+gBHzGRAAAAAElFTkSuQmCC">
     <style>
         * {
             margin: 0;
@@ -305,25 +304,15 @@
     
     // الاستماع لإشارة إظهار الأسعار
     const showPricesRef = ref(db, 'settings/showPricesForKunden');
-    onValue(showPricesRef, async (snapshot) => {
-        const shouldShow = snapshot.val();
-        if (shouldShow === true) {
-            // تحميل السلة من Firebase أولاً
-            await loadCartFromFirebase();
-            
-            // التحقق من وجود عناصر نشطة قبل إظهار النافذة
-            const hasActiveItems = currentCart.some(item => item.active === true);
-            if (hasActiveItems && currentCart.length > 0) {
-                showOverlay();
-            } else {
-                // إذا كانت السلة فارغة أو لا توجد عناصر نشطة، لا نفتح النافذة
-                showToast("Keine aktiven Artikel zum Anzeigen");
-            }
-            
-            // إعادة تعيين الإشارة بعد القراءة (حتى لا تظهر النافذة مرة أخرى بنفس الإشارة)
-            await set(showPricesRef, false);
-        }
-    });
+onValue(showPricesRef, async (snapshot) => {
+    const shouldShow = snapshot.val();
+    if (shouldShow === true) {
+        await loadCartFromFirebase();
+        showOverlay();
+        // لا تمسح الإشارة هنا!
+        // await set(showPricesRef, false);  // نحذف هذا السطر
+    }
+});
     
     // متابعة التغييرات في السلة بشكل مستمر (إذا كانت النافذة مفتوحة)
     const cartRef = ref(db, 'cart/current');
