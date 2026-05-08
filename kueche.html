@@ -325,9 +325,6 @@
             font-size: 1.2rem;
             grid-column: 1 / -1;
         }
-        #orderSound {
-            display: none;
-        }
         @media (max-width: 768px) {
             .orders-grid {
                 grid-template-columns: 1fr;
@@ -380,12 +377,11 @@
     </div>
 </div>
 
-<audio id="orderSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3" preload="auto"></audio>
 <div id="toastMsg" class="toast"></div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, get, onValue, update, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, get, onValue, update, set, onChildAdded } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
     
     const firebaseConfig = {
         apiKey: "AIzaSyAEupmyQlU5MK_tRDIlJpjwryKU0nHpjQk",
@@ -401,8 +397,8 @@
     const db = getDatabase(app);
     
     let orders = [];
-    let previousOrderCount = 0;
     let currentModalOrderId = null;
+    let soundEnabled = false;
     
     function showToast(msg, isErr = false) {
         const toast = document.getElementById("toastMsg");
@@ -411,18 +407,34 @@
         toast.classList.add("show");
         setTimeout(() => toast.classList.remove("show"), 2500);
     }
-        function playSound() {
-        // إنشاء عنصر صوت جديد في كل مرة (يتجاوز بعض قيود Autoplay)
-        const audio = new Audio("https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
-        audio.volume = 0.8;
+    
+    // تشغيل الجرس من ملف محلي
+    function playSound() {
+        if (!soundEnabled) {
+            console.log("Sound not enabled yet");
+            return;
+        }
+        const audio = new Audio("./bell.mp3");
+        audio.volume = 0.9;
         audio.play().catch(e => {
-            console.log("Sound play failed:", e);
-            // إذا فشل، نحاول مرة ثانية بعد 100ms
-            setTimeout(() => {
-                const audio2 = new Audio("https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3");
-                audio2.play().catch(err => console.log("Second attempt failed:", err));
-            }, 100);
+            console.log("Audio play failed:", e);
+            // إذا فشل التشغيل نعرض إشعار مرئي بديل
+            showToast("🔔 Neue Bestellung! (Ton konnte nicht abgespielt werden)");
         });
+    }
+    
+    // تفعيل الصوت بعد أول نقرة من المستخدم على الصفحة
+    function enableSoundOnFirstClick() {
+        document.body.addEventListener('click', () => {
+            if (!soundEnabled) {
+                soundEnabled = true;
+                // اختبار تشغيل الصوت (صامت تقريباً) لتفعيل السياسة
+                const testAudio = new Audio("./bell.mp3");
+                testAudio.volume = 0.01;
+                testAudio.play().catch(e => console.log("Test sound failed"));
+                showToast("🔊 Ton aktiviert - neue Bestellungen klingen jetzt");
+            }
+        }, { once: true });
     }
     
     function formatTime(timestamp) {
@@ -539,23 +551,20 @@
         document.getElementById("orderModal").style.display = "flex";
     }
     
-async function loadOccupiedTables() {
-    const snapshot = await get(ref(db, 'orders'));
-    const data = snapshot.val();
-    const activeTables = new Set();
-    if (data) {
-        Object.values(data).forEach(order => {
-            let t = order.table;
-            // نضيف الطاولة فقط إذا:
-            // 1. ليست takeaway
-            // 2. الطلب لم يكتمل نهائياً (status !== "completed")
-            if (t !== "takeaway" && !isNaN(parseInt(t)) && order.status !== "completed") {
-                activeTables.add(parseInt(t));
-            }
-        });
+    async function loadOccupiedTables() {
+        const snapshot = await get(ref(db, 'orders'));
+        const data = snapshot.val();
+        const activeTables = new Set();
+        if (data) {
+            Object.values(data).forEach(order => {
+                let t = order.table;
+                if (t !== "takeaway" && !isNaN(parseInt(t)) && order.status !== "completed") {
+                    activeTables.add(parseInt(t));
+                }
+            });
+        }
+        return Array.from(activeTables).sort((a,b)=>a-b);
     }
-    return Array.from(activeTables).sort((a,b)=>a-b);
-}
     
     async function renderTablesDropdown() {
         const activeTables = await loadOccupiedTables();
@@ -573,33 +582,41 @@ async function loadOccupiedTables() {
         }
     }
     
-    // ========== الاستماع للطلبات مع الجرس ==========
-    const ordersRef = ref(db, 'orders');
-    onValue(ordersRef, (snapshot) => {
-        const data = snapshot.val();
-        const newOrders = [];
-        
-        if (data) {
-            Object.entries(data).forEach(([id, order]) => {
-                if (order.status !== "completed" && order.visibleInKitchen !== false) {
-                    newOrders.push({ id, ...order });
-                }
-            });
-        }
-        
-        newOrders.sort((a,b) => b.timestamp - a.timestamp);
-        
-        // 🔔 الجرس: إذا زاد عدد الطلبات عن السابق
-        if (newOrders.length > previousOrderCount && newOrders.length > 0) {
+    // ========== جرس فوري باستخدام sounds/ring مع ملف محلي ==========
+    const ringRef = ref(db, 'sounds/ring');
+    onValue(ringRef, async (snapshot) => {
+        const shouldRing = snapshot.val();
+        if (shouldRing === true) {
             playSound();
             showToast("🔔 Neue Bestellung eingegangen!");
+            // إعادة تعيين الإشارة فوراً
+            await set(ringRef, false);
         }
-        
-        previousOrderCount = newOrders.length;
-        orders = newOrders;
-        renderOrders();
-        renderTablesDropdown();
     });
+    
+    // ========== الاستماع للطلبات الجديدة وعرضها ==========
+    function listenForOrders() {
+        const ordersRef = ref(db, 'orders');
+        
+        // الاستماع للتغييرات في جميع الطلبات (لعرض القائمة)
+        onValue(ordersRef, (snapshot) => {
+            const data = snapshot.val();
+            const newOrders = [];
+            
+            if (data) {
+                Object.entries(data).forEach(([id, order]) => {
+                    if (order.status !== "completed" && order.visibleInKitchen !== false) {
+                        newOrders.push({ id, ...order });
+                    }
+                });
+            }
+            
+            newOrders.sort((a,b) => b.timestamp - a.timestamp);
+            orders = newOrders;
+            renderOrders();
+            renderTablesDropdown();
+        });
+    }
     
     // ========== إعداد العداد التلقائي لليوم ==========
     setInterval(async () => {
@@ -675,6 +692,12 @@ async function loadOccupiedTables() {
             await set(lastDateRef, today);
         }
     })();
+    
+    // تفعيل الصوت عند أول نقرة
+    enableSoundOnFirstClick();
+    
+    // بدء الاستماع للطلبات
+    listenForOrders();
 </script>
 </body>
 </html>
