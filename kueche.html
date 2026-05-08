@@ -447,7 +447,7 @@
     let orders = [];
     let currentModalOrderId = null;
     let soundEnabled = false;
-    let audioContext = null;
+    let audioElement = null;
     let originalTitle = "Küche - Die Primel";
     
     function showToast(msg, isErr = false) {
@@ -475,50 +475,26 @@
         }, 3000);
     }
     
-    // تشغيل الصوت العالي باستخدام Web Audio API
+    // تشغيل الصوت باستخدام ملف bell.mp3
     function playSound() {
         if (!soundEnabled) return;
         
-        try {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-            
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            // صوت عالٍ وواضح
-            gainNode.gain.value = 0.9; // مستوى صوت مرتفع
-            
-            // نغمة أولى عالية
-            oscillator.frequency.value = 880; // A5
-            
-            oscillator.start();
-            
-            // بعد 150ms، نغمة ثانية أوطأ قليلاً
-            setTimeout(() => {
-                if (oscillator) oscillator.frequency.value = 660; // E5
-            }, 150);
-            
-            // نغمة ثالثة بعد 300ms
-            setTimeout(() => {
-                if (oscillator) oscillator.frequency.value = 880;
-            }, 300);
-            
-            // إيقاف بعد 0.7 ثانية
-            oscillator.stop(audioContext.currentTime + 0.7);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.7);
-            
-        } catch(e) {
-            console.log("Web Audio failed:", e);
-            showToast("🔔 Neue Bestellung!");
+        if (!audioElement) {
+            audioElement = new Audio("./bell.mp3");
+            audioElement.volume = 1.0; // أعلى مستوى صوت
+            audioElement.load();
         }
+        
+        // إعادة تعيين الصوت وإعادة تشغيله
+        audioElement.currentTime = 0;
+        audioElement.play().catch(e => {
+            console.log("Audio play failed:", e);
+            // محاولة ثانية بعد إعادة التحميل
+            audioElement.load();
+            setTimeout(() => {
+                audioElement.play().catch(err => console.log("Second attempt failed:", err));
+            }, 100);
+        });
     }
     
     // إشعار كامل (صوت + وميض + عنوان)
@@ -770,26 +746,14 @@
     // ========== تفعيل الصوت عند الضغط على الزر ==========
     document.getElementById("activateSoundBtn").onclick = () => {
         soundEnabled = true;
-        // إنشاء AudioContext وتشغيل صوت تجريبي عالٍ
-        try {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.frequency.value = 880;
-            gainNode.gain.value = 0.7;
-            oscillator.start();
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.4);
-            oscillator.stop(audioContext.currentTime + 0.4);
-        } catch(e) {
-            console.log("Test sound failed:", e);
+        // تشغيل صوت تجريبي عالٍ
+        if (!audioElement) {
+            audioElement = new Audio("./bell.mp3");
+            audioElement.volume = 1.0;
+            audioElement.load();
         }
+        audioElement.currentTime = 0;
+        audioElement.play().catch(e => console.log("Test sound failed:", e));
         document.getElementById("soundActivationOverlay").style.display = "none";
         showToast("🔊 Ton aktiviert - neue Bestellungen klingen jetzt laut");
     };
