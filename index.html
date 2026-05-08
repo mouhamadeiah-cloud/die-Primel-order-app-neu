@@ -507,6 +507,8 @@
             isOldItem: false
         });
         renderCart();
+        // حفظ فوري للتحديث في Kunden Display
+        saveCartToFirebase();
     }
     
     function loadTableIntoCart(tableItems) {
@@ -533,6 +535,7 @@
             };
         });
         renderCart();
+        saveCartToFirebase();
     }
     
     function renderCart() {
@@ -589,6 +592,7 @@
                 if (cart[idx]) {
                     cart[idx].active = !cart[idx].active;
                     renderCart();
+                    saveCartToFirebase();
                 }
             });
         });
@@ -599,6 +603,7 @@
                 if (cart[idx] && cart[idx].active) {
                     cart.splice(idx,1);
                     renderCart();
+                    saveCartToFirebase();
                 } else {
                     showToast("Inaktive Elemente können nicht gelöscht werden", true);
                 }
@@ -638,6 +643,7 @@
                     renderSelectedExtras(item);
                     renderSelectedZutaten(item);
                     renderCart();
+                    saveCartToFirebase();
                 });
             });
         } else {
@@ -666,6 +672,7 @@
                     renderSelectedExtras(item);
                     renderSelectedZutaten(item);
                     renderCart();
+                    saveCartToFirebase();
                 });
             });
         } else {
@@ -711,6 +718,7 @@
             }
             item.customText = document.getElementById("modalText").value;
             renderCart();
+            saveCartToFirebase();
             closeAllModals();
         }
     };
@@ -736,6 +744,7 @@
                 item.extras.push({ name, price });
                 renderSelectedExtras(item);
                 renderCart();
+                saveCartToFirebase();
                 showToast(`"${name}" hinzugefügt`);
             });
         });
@@ -762,6 +771,7 @@
                 item.zutaten.push({ name, price });
                 renderSelectedZutaten(item);
                 renderCart();
+                saveCartToFirebase();
                 showToast(`"${name}" hinzugefügt`);
             });
         });
@@ -786,6 +796,7 @@
     function activateAllOldItems() {
         cart.forEach(item => { if(item.isOldItem && !item.active) item.active = true; });
         renderCart();
+        saveCartToFirebase();
         showToast("Alle alten Elemente aktiviert");
     }
     document.getElementById("activateAllBtn").onclick = activateAllOldItems;
@@ -830,6 +841,7 @@
             currentSelectedTable = tableNum;
             updateUITableMode(true, tableNum);
             renderCart();
+            saveCartToFirebase();
             showToast(`Tisch ${tableNum} geladen (gespeicherter Zustand). Alle Elemente sind inaktiv.`);
             return;
         }
@@ -876,12 +888,14 @@
             currentSelectedTable = null;
             cart = [];
             renderCart();
+            saveCartToFirebase();
         }
     }
     
     function exitTableMode(resetCart = true) {
         if(resetCart) cart = [];
         renderCart();
+        saveCartToFirebase();
         updateUITableMode(false);
         showToast("Tabellenmodus beendet");
     }
@@ -890,11 +904,13 @@
         if(currentSelectedTable) {
             cart = cart.filter(item => !item.active);
             renderCart();
+            saveCartToFirebase();
             showToast("Aktive Elemente gelöscht");
             exitTableMode(true);
         } else {
             cart = [];
             renderCart();
+            saveCartToFirebase();
             showToast("Alles gelöscht");
         }
     };
@@ -958,6 +974,7 @@
             });
             
             renderCart();
+            saveCartToFirebase();
             showToast("Bestellung gesendet. Die Elemente wurden zur Tabelle hinzugefügt.");
             exitTableMode(true);
         } else {
@@ -997,6 +1014,7 @@
         await set(ref(db, 'sounds/ring'), true);
         cart = [];
         renderCart();
+        saveCartToFirebase();
         document.getElementById("tablesSelectionModal").style.display = "none";
         showToast(`Bestellung an ${table === "takeaway" ? "Takeaway" : "Tisch "+table} gesendet (#${orderNumber})`);
     }
