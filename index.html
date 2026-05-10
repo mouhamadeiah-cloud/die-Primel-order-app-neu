@@ -432,10 +432,18 @@
     titleEl.addEventListener("dblclick", async () => {
         showPrices = true;
         applyPriceVisibility();
-        // إرسال إشارة إلى Kunden Display
+        
+        // إرسال إشارة فتح النافذة إلى Kunden Display
         await set(ref(db, 'settings/showPricesForKunden'), true);
+        await set(ref(db, 'cart/current'), cart);
+        
         if(priceTimeout) clearTimeout(priceTimeout);
-        priceTimeout = setTimeout(() => { showPrices = false; applyPriceVisibility(); }, 60000);
+        priceTimeout = setTimeout(async () => { 
+            showPrices = false; 
+            applyPriceVisibility();
+            // إرسال إشارة إغلاق النافذة بعد 60 ثانية
+            await set(ref(db, 'settings/showPricesForKunden'), false);
+        }, 60000);
     });
     function applyPriceVisibility() {
         document.querySelectorAll(".item-price, .cart-item-price, .total, .option-price").forEach(el => {
