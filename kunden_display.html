@@ -121,12 +121,6 @@
             margin-top: 8px;
             color: #2d6a4f;
         }
-        .empty-cart-message {
-            text-align: center;
-            color: #666;
-            padding: 40px 20px;
-            font-size: 1.2rem;
-        }
         @media (max-width: 600px) {
             .price-card {
                 width: 95%;
@@ -170,7 +164,6 @@
     
     let currentCart = [];
     let overlayVisible = false;
-    let hideTimeout = null;
     
     function escapeHtml(str) {
         if (!str) return "";
@@ -182,25 +175,35 @@
         });
     }
     
+    // تحميل الخلفية من Firebase
+    async function loadBackground() {
+        const bgRef = ref(db, 'settings/kundenBackground');
+        const snapshot = await get(bgRef);
+        if (snapshot.exists()) {
+            const url = snapshot.val();
+            document.getElementById("background").style.backgroundImage = `url('${url}')`;
+        } else {
+            document.getElementById("background").style.background = "#2d6a4f";
+        }
+    }
+    
     // عرض العناصر في النافذة العائمة
     function renderCartOverlay() {
         const container = document.getElementById("cartItemsList");
         const totalDiv = document.getElementById("totalAmount");
         
         if (!currentCart || currentCart.length === 0) {
-            container.innerHTML = "<div class='empty-cart-message'>🛒 Der Warenkorb ist leer</div>";
+            container.innerHTML = "<p style='text-align:center; color:#666;'>Der Warenkorb ist leer</p>";
             totalDiv.innerHTML = "";
             return;
         }
         
         let total = 0;
         let itemsHtml = "";
-        let hasActiveItems = false;
         
         currentCart.forEach((item) => {
             // فقط العناصر المفعلة (active === true)
             if (item.active !== true) return;
-            hasActiveItems = true;
             
             let extrasTotal = (item.extras || []).reduce((s,e)=>s+(parseFloat(e.price)||0),0);
             let zutatenTotal = (item.zutaten || []).reduce((s,z)=>s+(parseFloat(z.price)||0),0);
@@ -241,124 +244,42 @@
             `;
         });
         
-        if (!hasActiveItems) {
-            container.innerHTML = "<div class='empty-cart-message'>🛒 Keine aktiven Artikel im Warenkorb</div>";
-            totalDiv.innerHTML = "";
-        } else {
-            container.innerHTML = itemsHtml;
-            totalDiv.innerHTML = `Gesamt: ${total.toFixed(2)} €`;
-        }
+        container.innerHTML = itemsHtml;
+        totalDiv.innerHTML = `Gesamt: ${total.toFixed(2)} €`;
     }
     
-    // تحميل السلة من Firebase
-    async function loadCartFromFirebase() {
-        const cartRef = ref(db, 'cart/current');
-        const snapshot = await get(cartRef);
-        if (snapshot.exists()) {
-            currentCart = snapshot.val();
-            renderCartOverlay();
-            
-            // إذا كانت النافذة مفتوحة ولا توجد عناصر نشطة، نغلق النافذة تلقائياً
-            if (overlayVisible) {
-                const hasActiveItems = currentCart.some(item => item.active === true);
-                if (!hasActiveItems || currentCart.length === 0) {
-                    hideOverlay();
-                }
-            }
-        } else {
-            currentCart = [];
-            renderCartOverlay();
-            if (overlayVisible) {
-                hideOverlay();
-            }
-        }
-    }
-    
-    // إظهار النافذة مع إعداد مؤقت للإغلاق التلقائي
-    function showOverlay() {
-        const overlay = document.getElementById("priceOverlay");
-        overlay.style.display = "flex";
-        overlayVisible = true;
-        
-        // إعادة تعيين المؤقت القديم
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-        }
-        
-        // تعيين مؤقت لإغلاق النافذة تلقائياً بعد 60 ثانية
-        hideTimeout = setTimeout(() => {
-            hideOverlay();
-        }, 60000);
-    }
-    
-    // إخفاء النافذة
-    function hideOverlay() {
-        const overlay = document.getElementById("priceOverlay");
-        overlay.style.display = "none";
-        overlayVisible = false;
-        if (hideTimeout) {
-            clearTimeout(hideTimeout);
-            hideTimeout = null;
-        }
-    }
-    
-    // الاستماع لإشارة إظهار الأسعار
-    const showPricesRef = ref(db, 'settings/showPricesForKunden');
-onValue(showPricesRef, async (snapshot) => {
-    const shouldShow = snapshot.val();
-    if (shouldShow === true) {
-        await loadCartFromFirebase();
-        showOverlay();
-        // لا تمسح الإشارة هنا!
-        // await set(showPricesRef, false);  // نحذف هذا السطر
-    }
-});
-    
-    // متابعة التغييرات في السلة بشكل مستمر (إذا كانت النافذة مفتوحة)
+    // الاستماع لتغييرات السلة بشكل لحظي
     const cartRef = ref(db, 'cart/current');
     onValue(cartRef, (snapshot) => {
         if (snapshot.exists()) {
             currentCart = snapshot.val();
-            renderCartOverlay();
-            
-            // إذا كانت النافذة مفتوحة وتغيرت السلة، نتحقق من الحاجة للإغلاق
-            if (overlayVisible) {
-                const hasActiveItems = currentCart.some(item => item.active === true);
-                if (!hasActiveItems || currentCart.length === 0) {
-                    hideOverlay();
-                }
-            }
         } else {
             currentCart = [];
+        }
+        // إذا كانت النافذة مفتوحة، حدث العرض
+        if (overlayVisible) {
             renderCartOverlay();
-            if (overlayVisible) {
-                hideOverlay();
-            }
         }
     });
     
-    // تحميل الخلفية من Firebase
-    async function loadBackground() {
-        const bgRef = ref(db, 'settings/kundenBackground');
-        const snapshot = await get(bgRef);
-        if (snapshot.exists()) {
-            const url = snapshot.val();
-            document.getElementById("background").style.backgroundImage = `url('${url}')`;
-        } else {
-            document.getElementById("background").style.background = "#2d6a4f";
+    // الاستماع لإشارة إظهار الأسعار
+    const showPricesRef = ref(db, 'settings/showPricesForKunden');
+    onValue(showPricesRef, async (snapshot) => {
+        const shouldShow = snapshot.val();
+        if (shouldShow === true) {
+            overlayVisible = true;
+            document.getElementById("priceOverlay").style.display = "flex";
+            renderCartOverlay();
+            // لا نعيد تعيين الإشارة هنا، بل ننتظر حتى يتم إعادة تعيينها من index.html بعد 60 ثانية
+        } else if (shouldShow === false && overlayVisible === true) {
+            // إشارة الإغلاق
+            overlayVisible = false;
+            document.getElementById("priceOverlay").style.display = "none";
         }
-    }
-    
-    function showToast(msg) {
-        // دالة بسيطة للتنبيه (يمكن إضافتها إذا رغبت)
-        console.log("[Kunden Display]", msg);
-    }
+    });
     
     // تحميل الخلفية عند بدء الصفحة
     loadBackground();
-    
-    // تحميل السلة أول مرة
-    loadCartFromFirebase();
 </script>
 </body>
 </html>
