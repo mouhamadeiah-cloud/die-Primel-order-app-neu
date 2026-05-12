@@ -443,7 +443,7 @@
             btn.onclick = (e) => { e.stopPropagation(); openZutatExtraModal(collectionName, btn.dataset.id); };
         });
         document.querySelectorAll(`#${collectionName}List .delete-btn`).forEach(btn => {
-            btn.onclick = (e) => { e.stopPropagation(); showConfirm(`${collectionName} löschen?`, async (ok) => { if(ok) { await remove(ref(db, `${collectionName}/${btn.dataset.id}`)); await loadAllData(); showToast(`${collectionName} gelöscht`); } }); });
+           btn.onclick = (e) => { e.stopPropagation(); showConfirm(`${collectionName} löschen?`, async (ok) => { if(ok) { await remove(ref(db, `${collectionName}/${btn.dataset.id}`)); await loadAllData(); showToast(`${collectionName} gelöscht`); } }); };
         });
     }
     function openZutatExtraModal(collectionName, id=null) {
